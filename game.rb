@@ -1,3 +1,21 @@
+class Array
+  def compact
+    # Sums neighboring fields of the same value together
+    _clean = self - [nil]
+    i = 0
+    # This is so unruby!
+    while i < _clean.length do
+      if _clean[i] == _clean[i+1]
+        _clean[i..i+1] = [_clean[i]*2, nil]
+        i += 1
+      end
+      i += 1
+    end
+    _clean -= [nil]
+    _clean + [nil] * (self.length - _clean.length)
+  end
+end
+
 class Board
 
   def initialize
@@ -6,7 +24,8 @@ class Board
     # pick two random fields and set them to either 2 or 4
     Array(0..15).sample(2).each do |index|
       # assign a 2 or with a small probability a 4
-      @fields[index] = rand > 0.1 and 2 or 4
+      @fields[index] = 2
+      @fields[index] = 4 if rand < 0.1
     end
   end
 
