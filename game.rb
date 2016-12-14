@@ -12,6 +12,7 @@ class Board
     # start the field with nil values and populate two of them
     @fields = [nil]*16
     self.populate_nil! 2
+    self.display
   end
 
   def rows
