@@ -31,4 +31,33 @@ class Array
     _clean -= [nil]
     _clean + [nil] * (self.length - _clean.length)
   end
+
+  def compact_points
+    # computes the points by compacting the array by the 2048 game logic
+    _clean = self - [nil]
+
+    # This is so unruby!
+    _points = []
+    i = 0
+    while i < _clean.length do
+      # So... if the next element is equal to this element
+      if _clean[i] == _clean[i+1]
+        # the sum of both fields is counted
+        _points << _clean[i]*2
+        # to skip the nil neighbor, increment the index
+        i += 1
+      end
+      i += 1
+    end
+
+    _sum = 0
+    _points.each do |_p|
+      _sum += _p
+    end
+    _sum
+  end
+
+  def compactable?
+    self != compact
+  end
 end
