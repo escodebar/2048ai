@@ -15,4 +15,7 @@ Use a ZeroMQ REQ socket to communicate with the game server and send it strings 
 The player starts a game server, connects to it and starts to play, with random moves.
 This player keeps playing forever and ever and ever and ever.
 The player will contain the decision making logic.
-You can start the player in the shell.
+You can start the player in the shell with an optional host and port option, else it will connect to tcp://localhost:5555.
+
+## board.rb, array.rb
+Contains the game's board and some monkey patches for Array.
