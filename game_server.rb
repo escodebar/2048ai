@@ -18,16 +18,15 @@ def run(port)
   socket.bind("tcp://*:#{port}")
 
   # create the board
-  b = Board.new
+  board = Board.new
 
-  while true do
+  # we need a place to store the request
+  request = ''
 
-    # check if the game is over and start a new one if needed
-    b = Board.new if b.done?
+  while 0 < socket.recv_string(request)
 
     # get the requested move direction
-    request = ''
-    socket.recv_string(request)
+    break if request.eql?('exit')
 
     # handle the request
     reply = if ['up', 'down', 'left', 'right'].index(request).nil?
@@ -35,14 +34,20 @@ def run(port)
               { 'error' => "Bad request '#{request}', try up, down, left or right!" }.to_yaml
             else
               # move the fields in the requseted direction
-              eval("b.#{request}!")
-              b.to_yaml
+              eval("board.#{request}!")
+              board.to_yaml
             end
 
     # send the reply
     socket.send_string(reply)
 
+    # check if the game is over and start a new one if needed
+    board = Board.new if board.done?
+
   end
+
+  # cleanly close the socket
+  socket.close
 end
 
 
