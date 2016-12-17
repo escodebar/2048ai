@@ -21,7 +21,7 @@ class Board
 
 
   def rows
-    # splits the field into its rows
+    # splits the field into rows
     _rows = []
     @fields.each_with_index do |x, i|
       _rows << [] if i % 4 == 0
@@ -32,7 +32,7 @@ class Board
 
 
   def cols
-    # splits the field into its columns
+    # splits the field into columns
     _cols = [[], [], [], []]
     @fields.each_with_index do |x, i|
       _cols[i % 4] << x
@@ -41,17 +41,36 @@ class Board
   end
 
 
+  def compactables(direction)
+    # in order to write more compact code, let's split here the 4 different cases, which lead
+    # to the same type of object (a list of integers to compact). treating these 4 cases as
+    # compactables leads to simpler code
+    case direction
+      when 'left'
+        rows
+      when 'right'
+        # when we compact to the right, it is like compacting to the left we just need
+        # to reverse each row
+        rows.collect { |row| row.reverse }
+      when 'up'
+        # when we compact upwards, it is like compacting rows, we just deal with the
+        # columns instead
+        cols
+      when 'down'
+        # compacting downwards is like doing it the opposite way, reversing each
+        # column first
+        cols.collect { |col| col.reverse }
+      else
+        raise ArgumentError, "Unknown direction #{direction}, chose amongst: up, down, right, left"
+    end
+  end
+
+
   def method_missing(m, *args, &block)
-    # let us add some shortcuts like up!, down!, right! and left!
+    # let's add some shortcuts like up!, down!, right! and left!
     direction = String(m).gsub('!', '')
-    if !['up', 'down', 'left', 'right'].index(direction).nil?
-      # store the state of the fields
-      _fields = @fields
-      move_vertically!(direction) if !['up', 'down'].index(direction).nil?
-      move_horizontally!(direction) if !['left', 'right'].index(direction).nil?
-      # increment the score, populate some empty fields randomly and display the board
-      @total_score += @last_move
-      populate_nil! 1 if _fields != @fields
+    if ['left', 'right', 'up', 'down'].include?(direction)
+      move!(direction)
       display
     else
       raise NoMethodError, "undefined method `#{m}` for #{self.inspect}"
@@ -59,46 +78,51 @@ class Board
   end
 
 
-  def move_horizontally!(direction)
-    # Tell the user he's using this method wrong if he does not chose the right direction!
-    if ['right', 'left'].index(direction).nil?
-      raise ArgumentError, "Direction is either 'left' or 'right', not #{direction}"
+  def move!(direction)
+    # Tell the user he's using this method wrong if he does not chose a correct direction
+    if not ['left', 'right', 'up', 'down'].include?(direction)
+      raise ArgumentError, "Unknown direction #{direction}, chose amongst: up, down, right, left"
     end
-    # performs a horizontal movement, see how the rows can simply be added to get the complete field
-    _fields = []
-    rows.each do |row|
-      @last_move = row.compact_points if direction == 'left'
-      @last_move = row.reverse.compact_points if direction == 'right'
-      _fields += row.compact if direction == 'left'
-      _fields += row.reverse.compact.reverse if direction == 'right'
-    end
-    # store the new fields
-    @fields = _fields
-  end
 
+    # reset some inner values and store the field
+    @last_move = 0
+    _fields = @fields
 
-  def move_vertically!(direction)
-    # Tell the user he's using this method wrong if he does not chose the right direction!
-    if ['up', 'down'].index(direction).nil?
-      raise ArgumentError, "Direction is either 'up' or 'down', not #{direction}"
+    # depending on the direction, the compactables  will be rows, columns, or their reverses
+    # let's deal with compactables and not care about what their nature is, just compact them!
+    _compacted = compactables(direction).collect do |compactable|
+      # I monkey patched these methods into the array class. take a look at array.rb
+      @last_move += compactable.compact_2048_points
+      compactable.compact_2048
     end
-    # performs a vertical movement
-    # since the columns need to be mapped differently, we need to store them
-    # first and map them to the field afterwards. this is subject to improvement
-    _cols = []
-    cols.each do |col|
-      @last_move = col.compact_points if direction == 'up'
-      @last_move = col.reverse.compact_points if direction == 'down'
-      _cols << col.compact if direction == 'up'
-      _cols << col.reverse.compact.reverse if direction == 'down'
-    end
-    # map the columns to the field (I do not like this part)
-    _fields = []
-    _cols.transpose.each do |col|
-      _fields += col
-    end
-    # store the new fields
-    @fields = _fields
+
+    # compacting certainly gave a heap of points, let's add them to the total score to keep the
+    # happy player happy and playing happyly
+    @total_score += @last_move
+
+    # now we deal again with the 4 different cases to map the compactables back to their prior form
+    # as rows or columns in order to be flatteden correctly into the field
+    @fields = case direction
+                when 'left'
+                  _compacted.flatten
+                when 'right'
+                  # now this is easy, reverse each compactable to get the right sequence
+                  _compacted.collect { |compactable| compactable.reverse }.flatten
+                when 'up'
+                  # think of the compactables as a vector of lists. each list represents a column
+                  # all of a sudden the columns are rows in a matrix, which can be easily transposed
+                  # into its correct shape. compactables can just be transposed
+                  _compacted.transpose.flatten
+                when 'down'
+                  # boah, 'up' was spooky, but let's use this for 'down' as well! so the only thing
+                  # we need to do is reverse each compactable first before transposing the matrix
+                  _compacted.collect { |compactable| compactable.reverse }.transpose.flatten
+                else
+                  raise ArgumentError, "Get out of here! now!! or I'll call the feds!!11one"
+                end
+
+    # don't forget to populate some random nil fields if there was a change
+    populate_nil! 1 if not @fields.eql?(_fields)
   end
 
 
@@ -122,7 +146,7 @@ class Board
     # displays the board
     print "\n"
     rows.each do |row|
-      print ' ' + row.join('   ')  + "\n\n"
+      print ' ' + row.collect { |field| field.to_s.rjust(4, " ")}.join('|')  + "\n\n"
     end
   end
 
@@ -135,11 +159,11 @@ class Board
     end
     _rows_compactable = false
     rows.each do |row|
-      _rows_compactable |= row.compactable?
+      _rows_compactable |= row.compactable_2048?
     end
     _cols_compactable = false
     cols.each do |col|
-      _cols_compactable |= col.compactable?
+      _cols_compactable |= col.compactable_2048?
     end
     _nil.empty? and !_rows_compactable and !_cols_compactable
   end

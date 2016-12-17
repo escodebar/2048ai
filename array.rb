@@ -6,7 +6,7 @@ class Array
   # not come with this method! ... And skeletons don't come...
   # with beards! [http://poignant.guide/book/chapter-7.html]
 
-  def compact
+  def compact_2048
     # compacts an array of integers as given by the 2048 game logic
 
     # remove nil elemenst, we're adding them afterwards
@@ -32,7 +32,7 @@ class Array
     _clean + [nil] * (self.length - _clean.length)
   end
 
-  def compact_points
+  def compact_2048_points
     # computes the points by compacting the array by the 2048 game logic
     _clean = self - [nil]
 
@@ -57,7 +57,8 @@ class Array
     _sum
   end
 
-  def compactable?
-    self != compact
+  def compactable_2048?
+    # determines if the row is compactable
+    self != compact_2048
   end
 end
