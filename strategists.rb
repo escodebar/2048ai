@@ -66,15 +66,20 @@ class PointMaximizer < Strategist
   # This choses the move which gives the maximum score
 
   def choice(nr_of_choices=1)
-    # for each choice, compute the value of the board
+    # for each choice, compute the score of the move
     @choices.collect do |choice|
       [@board.dup.move!(choice), choice]
-    # then sort it and pick the first nr_of_choices
-    end.sort { |a, b| a[1] <=> b[1] }[0, nr_of_choices]
+    # then sort it by the value of the move and pick the best scores
+    end.sort { |a, b| a[1] <=> b[1] }.slice(0...nr_of_choices)
   end
 
   def veto(nr_of_vetos=1)
-    # todo: return all moves with 0 value
+    # if a move gives no points it is totally vetoed!
+    _vetos = @choices.collect do |choice|
+      _score = @board.dup.move!(choice)
+      [_score, choice] if _score.eql? 0
+    end - [nil]
+    _vetos.sample(nr_of_vetos)
   end
 end
 
@@ -84,10 +89,19 @@ class Sweeper < Strategist
 
   def choice(nr_of_choices=1)
     # which move frees the most fields?
+    @choices.collect do |choice|
+      _board = @board.dup.move! choice 
+      [_board.fields.inject(0) { |empty, field| empty + 1 if field.nil? }]
+    end.sort { |a, b| a[1] <=> b[i] }.slice 0..nr_of_choices
   end
 
   def veto(nr_of_vetos=1)
-    # which move leaves least fields empty?
+    _empty = _boards.fields.inject(0) { |empty, field| empty + 1 if field.nil? }
+    # which move 
+    @choices.collect do |choice|
+      __empty = @board.dup.move!(choice).fields.inject(0) { |empty, field| empty + 1 if field.nil? }
+      choice if _empty > __empty
+    end.sample(nr_of_vetos)
   end
-
 end
+

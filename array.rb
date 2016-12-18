@@ -61,4 +61,25 @@ class Array
     # determines if the row is compactable
     self != compact_2048
   end
+
+  def rows(m=4)
+    # assuming the array represents a mxn field
+    # this returns its rows in an array
+    _rows = []
+    self.each_with_index do |x, i|
+      _rows << [] if i % m == 0
+      _rows.last << x
+    end
+    _rows
+  end
+
+  def cols(n=4)
+    # assuming the array represents a mxn field
+    # this returns its columns in an array
+    _cols = [[], [], [], []]
+    self.each_with_index do |x, i|
+      _cols[i % n] << x
+    end
+    _cols
+  end
 end

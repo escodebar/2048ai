@@ -8,10 +8,12 @@ class Board
   # pairwise matching neighbors.
   # Display is a rudimentary function to display the field
 
-  def initialize
+  attr_reader :fields
+
+  def initialize(fields=[nil]*16)
     # start the field with nil values and populate two of them
-    @fields = [nil]*16
-    populate_nil! 2
+    @fields = fields
+    populate_nil! 2 if (fields - [nil]).empty?
     display
 
     # initializes the total and the score of the last move
@@ -80,7 +82,7 @@ class Board
 
   def move!(direction)
     # Tell the user he's using this method wrong if he does not chose a correct direction
-    if not ['left', 'right', 'up', 'down'].include?(direction)
+    unless ['left', 'right', 'up', 'down'].include?(direction)
       raise ArgumentError, "Unknown direction #{direction}, chose amongst: up, down, right, left"
     end
 
@@ -122,7 +124,10 @@ class Board
                 end
 
     # don't forget to populate some random nil fields if there was a change
-    populate_nil! 1 if not @fields.eql?(_fields)
+    populate_nil! 1 unless @fields.eql?(_fields)
+
+    # return the value of the move
+    @last_move
   end
 
 
