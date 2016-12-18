@@ -11,7 +11,7 @@ def play(host, port)
   # plays the game
 
   # start the game server
-  pid = Process.spawn("ruby game.rb -p #{port} > /dev/null 2>&1")
+  pid = Process.spawn("ruby game_server.rb -p #{port} > /dev/null 2>&1")
   puts "Started game server subprocess with pid #{pid}"
 
   # socket for communication
