@@ -10,7 +10,7 @@ def run(host='localhost', port=nil, spawn_server=false)
   # plays the game
 
   # select a random port if none is set
-  port = (6000...7000).sample if port.nil?
+  port = Array(6000...7000).sample if port.nil?
 
   # socket for communication
   context = ZMQ::Context.new 1
@@ -78,6 +78,7 @@ if __FILE__ == $0
 
     # the program options
     opts.on('-p', '--port PORT', 'Server port') { |v| options[:port] = v }
+    opts.on('-H', '--host HOST', 'Server host') { |v| options[:host] = v }
 
     # the help option
     opts.on('-h', '--help', 'Print this help') do
