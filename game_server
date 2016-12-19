@@ -3,9 +3,8 @@
 require 'optparse'
 require 'rubygems'
 require 'ffi-rzmq'
-require 'yaml'
 
-require './board'
+require './the2048game'
 
 
 def run(port)
@@ -31,10 +30,10 @@ def run(port)
     # handle the request
     reply = if board.directions.index(request).nil?
               # Bad request, reply!
-              { 'error' => "Bad request '#{request}', try up, down, left or right!" }.to_yaml
+              { 'error' => "Bad request '#{request}', try #{The2048Game::DIRECTIONS.join(', ')}" }.to_yaml
             else
               # move the fields in the requseted direction
-              eval("board.#{request}!")
+              board.move!(request)
               board.to_yaml
             end
 

@@ -1,6 +1,12 @@
+require 'yaml'
+require 'ffi-rzmq'
+
 require './array'
 
 module The2048Game
+
+  # The accepted moves
+  DIRECTIONS = ['left', 'right', 'up', 'down']
 
   class Board
 
@@ -10,7 +16,7 @@ module The2048Game
     # pairwise matching neighbors.
     # Display is a rudimentary function to display the field
 
-    @@directions = ['left', 'right', 'up', 'down']
+    @@directions = DIRECTIONS
 
     attr_reader :fields
 
@@ -90,7 +96,7 @@ module The2048Game
     def move!(direction)
       # Tell the user he's using this method wrong if he does not chose a correct direction
       unless @@directions.include?(direction)
-        raise ArgumentError, "Unknown direction #{direction}, chose amongst: up, down, right, left"
+        raise ArgumentError, "Unknown direction #{direction}, chose amongst: #{@@directions.join(', ')}"
       end
 
       # reset some inner values and store the field
@@ -126,8 +132,6 @@ module The2048Game
                     # boah, 'up' was spooky, but let's use this for 'down' as well! so the only thing
                     # we need to do is reverse each compactable first before transposing the matrix
                     _compacted.collect { |compactable| compactable.reverse }.transpose.flatten
-                  else
-                    raise ArgumentError, "Unknown direction #{direction}, chose amongst: up, down, right, left"
                   end
 
       # don't forget to populate some random nil fields if there was a change
