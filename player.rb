@@ -7,7 +7,29 @@ require 'yaml'
 
 require './board'
 
-def play(host, port)
+class Player
+  def initialize(socket=nil)
+    @socket = socket
+  end
+
+  def play
+    # send a random direction
+    request = ['up','down','left','right'].sample
+    @socket.send_string(request)
+
+    # get the reply
+    reply = ''
+    @socket.recv_string(reply)
+
+    # TODO: security issues here!
+    _r = YAML.load(reply)
+    print _r
+  end
+
+end
+
+
+def run(host, port)
   # plays the game
 
   # start the game server
@@ -19,20 +41,11 @@ def play(host, port)
   socket = context.socket(ZMQ::REQ)
   socket.connect("tcp://#{host}:#{port}")
 
+  player = Player.new(socket)
+
   while true do
-
-    # send a random direction
-    request = ['up','down','left','right'].sample
-    socket.send_string(request)
-
-    # get the reply
-    reply = ''
-    socket.recv_string(reply)
-
-    # TODO: security issues here!
-    _r = YAML.load(reply)
-    print _r
-
+    # Player! make a move!
+    player.play
     # think for a second
     sleep 1
   end
@@ -57,5 +70,5 @@ if __FILE__ == $0
     end
   end.parse!
 
-  play(options[:host], options[:port])
+  run(options[:host], options[:port])
 end

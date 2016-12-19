@@ -18,7 +18,7 @@ def run(port)
   socket.bind("tcp://*:#{port}")
 
   # create the board
-  board = Board.new
+  board = The2048Game::Board.new
 
   # we need a place to store the request
   request = ''
@@ -29,7 +29,7 @@ def run(port)
     break if request.eql?('exit')
 
     # handle the request
-    reply = if ['up', 'down', 'left', 'right'].index(request).nil?
+    reply = if board.directions.index(request).nil?
               # Bad request, reply!
               { 'error' => "Bad request '#{request}', try up, down, left or right!" }.to_yaml
             else
@@ -42,7 +42,7 @@ def run(port)
     socket.send_string(reply)
 
     # check if the game is over and start a new one if needed
-    board = Board.new if board.done?
+    board = The2048Game::Board.new if board.game_over?
 
   end
 
