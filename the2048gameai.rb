@@ -8,34 +8,19 @@ module The2048GameAI
   class Player
     # Plays the game
 
-    def initialize(socket=nil, strategists=[])
-
-      unless socken.is_a?(ZMQ::Socket) or socket.nil?
-        raise ArgumentError, "Socket class invalid! Try using a ZeroMQ socket!"
-      end
-
-      # socket needs to be a ZeroMQ Socket
-      @socket = socket
+    def initialize(strategists=[])
       @strategists = strategists
     end
 
 
-    def make_a_move
+    def make_a_move(status)
       # the player makes a move
-
-      # get the reply
-      request = ''
-      @socket.recv_string(request) unless socket.nil?
-      status = YAML.load(request) # security issues here!
-
-      reply = unless @strategists.empty?
-                consult_strategists status
-              else
-                # If no stategist around, the clueless player sends a random direction
-                The2048Game::DIRECTIONS.sample
-              end
-
-      @socket.send_string(reply) unless socket.nil?
+      unless @strategists.empty?
+        consult_strategists status
+      else
+        # If no stategist around, the clueless player sends a random direction
+        The2048Game::DIRECTIONS.sample
+      end
     end
 
 

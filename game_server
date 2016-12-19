@@ -7,42 +7,58 @@ require 'ffi-rzmq'
 require './the2048game'
 
 
-def run(port)
+def run(port=nil)
   # runs the game
 
+  # select a random port if none is set
+  port = (6000...7000).sample if port.nil?
+
   # socket for communication
-  puts "Starting 2048 game server..."
   context = ZMQ::Context.new(1)
-  socket = context.socket(ZMQ::REP)
+  socket = context.socket(ZMQ::REQ)
   socket.bind("tcp://*:#{port}")
 
   # create the board
-  board = The2048Game::Board.new
+  board = The2048Game::Board.new socket: nil
 
-  # we need a place to store the request
-  request = ''
+  # define the error hash
+  errors = { error: "Bad request '#{request}', try #{The2048Game::DIRECTIONS.join(', ')}" }
 
-  while 0 < socket.recv_string(request)
+  # we need a place to store the and the reply
+  reply = ''
+  tries = 0
 
-    # get the requested move direction
-    break if request.eql?('exit')
+  def communicate
+    # handles the communication between the client and the server
+    # this function obfuscates some of the logic, so please take a closer look at it
 
-    # handle the request
-    reply = if board.directions.index(request).nil?
-              # Bad request, reply!
-              { 'error' => "Bad request '#{request}', try #{The2048Game::DIRECTIONS.join(', ')}" }.to_yaml
-            else
-              # move the fields in the requseted direction
-              board.move!(request)
-              board.to_yaml
-            end
+    # send the board
+    board_hash = board.hash
+    board_hash = board_hash.update(errors.update({tries: tries})) if tries > 0
+    socket.send_string board_hash.to_yaml
 
-    # send the reply
-    socket.send_string(reply)
+    # increase the counter of tries
+    tries += 1
+
+    # get 
+    socket.recv_string reply
+  end
+
+  while true
+    # send the current status of the board to the client
+    communicate until (board.directions + ['exit']).include? reply
+
+    # exit if requested
+    break if reply.eql? 'exit'
+
+    # move the fields in the requested direction
+    board.move! reply
 
     # check if the game is over and start a new one if needed
     board = The2048Game::Board.new if board.game_over?
 
+    # reset the number of tries
+    tries = 0
   end
 
   # cleanly close the socket

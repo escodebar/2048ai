@@ -179,13 +179,19 @@ module The2048Game
     end
 
 
-    def to_yaml
-      # returns a yaml dict with the values of the board
+    def to_hash
+      # returns a hash with the values of the board
       {
-        'fields' => @fields,
-        'last_move' => @last_move,
-        'score' => @total_score
-      }.to_yaml
+        fields: @fields,
+        last_move: @last_move,
+        score: @total_score
+      }
+    end
+
+
+    def to_yaml
+      # serializes the board as yaml
+      to_hash.to_yaml
     end
 
   end

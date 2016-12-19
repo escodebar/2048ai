@@ -6,26 +6,63 @@ require 'ffi-rzmq'
 
 require './the2048game'
 
-def run(host, port)
+def run(host='localhost', port=nil, spawn_server=false)
   # plays the game
 
-  # start the game server
-  pid = Process.spawn "ruby game_server.rb -p #{port} > /dev/null 2>&1"
-  puts "Started game server subprocess with pid #{pid}"
+  # select a random port if none is set
+  port = (6000...7000).sample if port.nil?
 
   # socket for communication
   context = ZMQ::Context.new 1
-  socket = context.socket ZMQ::REQ
+  socket = context.socket ZMQ::REP
   socket.connect "tcp://#{host}:#{port}"
 
+  # start the game server if needed
+  server_pid = Process.spawn "ruby game_server.rb -p #{port} > /dev/null 2>&1" if spawn_server
+
+  # initialize the player
   player = The2048Game::Player.new socket
 
-  while true do
-    # Player! make a move!
-    player.play
-    # think for a second
+  # define the error hash
+  errors = { error: "Bad status '#{reply}', couldn't load board" }
+
+  # we need a place to store the and the reply
+  request = ''
+  tries = 0
+
+  def validates
+    # handles the validation of the server's requests
+    # this function obfuscates some of the logic, so please take a closer look at it
+
+    # todo: check if the status if valid or not
+    invalid = false
+
+    if invalid
+      socket.send_string errors.to_yaml
+      tries += 1
+    else
+      true
+    end
+  end
+
+  while true
+    # TODO: if YAML couldn't load or it doesn't contain
+    socket.recv_string request until validates
+
+    #load the yaml of the request and tell the player to make a move
+    status = YAML.load request
+
+    # let the player make a move and inform the server
+    socket.send_string player.make_move(status)
+
+    # stop for a second
     sleep 1
   end
+
+  # todo: kill spawn server if server spawn
+
+  # cleanly close the socket
+  socket.close
 
 end
 
@@ -33,7 +70,7 @@ end
 if __FILE__ == $0
 
   # parse the program options
-  options = { :host => "localhost", :port => 5555 }
+  options = { host: "localhost", port: 5555, spawn_server: false }
 
   OptionParser.new do |opts|
     # the program banner
@@ -49,5 +86,5 @@ if __FILE__ == $0
     end
   end.parse!
 
-  run options[:host], options[:port]
+  run options[:host], options[:port], options[:spawn_server]
 end
