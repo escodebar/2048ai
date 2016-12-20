@@ -1,68 +1,89 @@
 #!/usr/bin/env ruby
 
+require 'ffi-rzmq'
 require 'optparse'
 require 'rubygems'
-require 'ffi-rzmq'
+require 'yaml'
 
 require './the2048game'
+require './the2048gameai'
 
-def run(host='localhost', port=nil, spawn_server=false)
-  # plays the game
+class Server
 
-  # select a random port if none is set
-  port = Array(6000...7000).sample if port.nil?
+  def run(host='localhost', port=nil, spawn_server=false)
+    # plays the game
 
-  # socket for communication
-  context = ZMQ::Context.new 1
-  socket = context.socket ZMQ::REP
-  socket.connect "tcp://#{host}:#{port}"
+    # select a random port if none is set
+    port = Array(6000...7000).sample if port.nil?
 
-  # start the game server if needed
-  server_pid = Process.spawn "ruby game_server.rb -p #{port} > /dev/null 2>&1" if spawn_server
+    # socket for communication
+    context = ZMQ::Context.new 1
+    @socket = context.socket ZMQ::REP
+    @socket.connect "tcp://#{host}:#{port}"
 
-  # initialize the player
-  player = The2048Game::Player.new socket
+    # start the game server if needed
+    pid_server = Process.spawn "ruby game_server -p #{port} > /dev/null 2>&1" if spawn_server
 
-  # define the error hash
-  errors = { error: "Bad status '#{reply}', couldn't load board" }
+    # initialize the player
+    player = The2048GameAI::Player.new
 
-  # we need a place to store the and the reply
-  request = ''
-  tries = 0
+    # the request validation logic is separated from the rest of the script
+    # and put into its own function (called validates). To simplify this task
+    # we're going to use closures!
+    @request = ''
+    @status = {}
+    @tries = 0
 
-  def validates
-    # handles the validation of the server's requests
-    # this function obfuscates some of the logic, so please take a closer look at it
+    def validates(string)
+      # handles the validation of the server's requests
+      # this function reads the hash 'errors' and changes the values of the
+      # the request string. on every request, the tries counter is increased.
+      @yaml = YAML.load string
 
-    # todo: check if the status if valid or not
-    invalid = false
+      def has_fields?(symbols)
+        # checks if the parsed yaml hash has the given list of labels
+        # caution! call this only if you know the parsed yaml is a Hash
+        symbols.inject(true) { |total, elem| total &= @yaml.include? elem }
+      end
 
-    if invalid
-      socket.send_string errors.to_yaml
-      tries += 1
-    else
-      true
+      unless @yaml.is_a?(Hash) and has_fields?([:fields, :last_move, :score])
+
+        # we're doing this over and over when we communicate
+        # I seriously hope it does not happen way too often!
+        errors = { error: "Bad status '#{@request}', couldn't load board" }
+
+        # report of the error
+        @socket.send_string @errors.to_yaml
+        @tries += 1
+
+        # it does not validate
+        false
+      else
+        # it does validate
+        true
+      end
     end
+
+    while true
+      # TODO: if YAML couldn't load or it doesn't contain
+      @socket.recv_string(@request) until validates(@request)
+
+      #load the yaml of the request and tell the player to make a move
+      status = YAML.load @request
+
+      # let the player make a move and inform the server
+      @socket.send_string player.make_a_move(status)
+
+      # stop for a second
+      sleep 1
+    end
+
+    # kill the running process
+    Process.kill(:SIGINT, pid_server) if spawn_server
+
+    # cleanly close the socket
+    @socket.close
   end
-
-  while true
-    # TODO: if YAML couldn't load or it doesn't contain
-    socket.recv_string request until validates
-
-    #load the yaml of the request and tell the player to make a move
-    status = YAML.load request
-
-    # let the player make a move and inform the server
-    socket.send_string player.make_move(status)
-
-    # stop for a second
-    sleep 1
-  end
-
-  # todo: kill spawn server if server spawn
-
-  # cleanly close the socket
-  socket.close
 
 end
 
@@ -74,11 +95,12 @@ if __FILE__ == $0
 
   OptionParser.new do |opts|
     # the program banner
-    opts.banner = "Usage: player.rb [options]"
+    opts.banner = "Usage: game_client [options]"
 
     # the program options
     opts.on('-p', '--port PORT', 'Server port') { |v| options[:port] = v }
     opts.on('-H', '--host HOST', 'Server host') { |v| options[:host] = v }
+    opts.on('-s', '--server', 'Spawn server') { |v| options[:spawn_server] = !!v }
 
     # the help option
     opts.on('-h', '--help', 'Print this help') do
@@ -87,5 +109,5 @@ if __FILE__ == $0
     end
   end.parse!
 
-  run options[:host], options[:port], options[:spawn_server]
+  Server.new.run options[:host], options[:port], options[:spawn_server]
 end

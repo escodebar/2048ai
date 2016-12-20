@@ -15,50 +15,54 @@ def run(port=nil)
 
   # socket for communication
   context = ZMQ::Context.new(1)
-  socket = context.socket(ZMQ::REQ)
-  socket.bind("tcp://*:#{port}")
+  @socket = context.socket(ZMQ::REQ)
+  @socket.bind("tcp://*:#{port}")
 
   # create the board
-  board = The2048Game::Board.new socket: nil
+  board = The2048Game::Board.new
 
-  # define the error hash
-  errors = { error: "Bad request '#{request}', try #{The2048Game::DIRECTIONS.join(', ')}" }
+  # the request validation logic is separated from the rest of the script
+  # and put into its own function (called validates). To simplify this task
+  # we're going to use closures!
+  @reply = ''
+  @tries = 0
 
   # we need a place to store the and the reply
-  reply = ''
-  tries = 0
 
-  def communicate
+  def communicate(board)
     # handles the communication between the client and the server
     # this function obfuscates some of the logic, so please take a closer look at it
 
+    # we're doing this over and over when we communicate
+    # I seriously hope it does not happen way too often!
+    errors = { error: "Bad request '#{@reply}', try #{The2048Game::DIRECTIONS.join(', ')}" }
+
     # send the board
-    board_hash = board.hash
-    board_hash = board_hash.update(errors.update({tries: tries})) if tries > 0
-    socket.send_string board_hash.to_yaml
+    board.update(errors.update({tries: @tries})) if @tries > 0
+    @socket.send_string board.to_yaml
 
     # increase the counter of tries
-    tries += 1
+    @tries += 1
 
     # get 
-    socket.recv_string reply
+    @socket.recv_string @reply
   end
 
   while true
     # send the current status of the board to the client
-    communicate until (board.directions + ['exit']).include? reply
+    communicate(board.to_hash) until (board.directions + ['exit']).include?(@reply)
 
     # exit if requested
-    break if reply.eql? 'exit'
+    break if @reply.eql? 'exit'
 
     # move the fields in the requested direction
-    board.move! reply
+    board.move! @reply
 
     # check if the game is over and start a new one if needed
     board = The2048Game::Board.new if board.game_over?
 
     # reset the number of tries
-    tries = 0
+    @tries = 0
   end
 
   # cleanly close the socket
@@ -72,7 +76,7 @@ if __FILE__ == $0
   options = { :port => 5555 }
   OptionParser.new do |opts|
     # the program banner
-    opts.banner = "Usage: player.rb [options]"
+    opts.banner = "Usage: game_server [options]"
 
     # the program options
     opts.on('-p', '--port PORT', 'Server port') { |v| options[:port] = v}
@@ -85,5 +89,5 @@ if __FILE__ == $0
   end.parse!
 
   # run the game listening on the given port
-  run(options[:port])
+  run options[:port]
 end
