@@ -1,91 +1,8 @@
 #!/usr/bin/env ruby
 
-require 'ffi-rzmq'
 require 'optparse'
-require 'rubygems'
-require 'yaml'
 
-require './the2048game'
-require './the2048gameai'
-
-class Server
-
-  def run(host='localhost', port=nil, spawn_server=false)
-    # plays the game
-
-    # select a random port if none is set
-    port = Array(6000...7000).sample if port.nil?
-
-    # socket for communication
-    context = ZMQ::Context.new 1
-    @socket = context.socket ZMQ::REP
-    @socket.connect "tcp://#{host}:#{port}"
-
-    # start the game server if needed
-    pid_server = Process.spawn "ruby game_server -p #{port} > /dev/null 2>&1" if spawn_server
-
-    # initialize the player
-    player = The2048GameAI::Player.new
-
-    # the request validation logic is separated from the rest of the script
-    # and put into its own function (called validates). To simplify this task
-    # we're going to use closures!
-    @request = ''
-    @status = {}
-    @tries = 0
-
-    def validates(string)
-      # handles the validation of the server's requests
-      # this function reads the hash 'errors' and changes the values of the
-      # the request string. on every request, the tries counter is increased.
-      @yaml = YAML.load string
-
-      def has_fields?(symbols)
-        # checks if the parsed yaml hash has the given list of labels
-        # caution! call this only if you know the parsed yaml is a Hash
-        symbols.inject(true) { |total, elem| total &= @yaml.include? elem }
-      end
-
-      unless @yaml.is_a?(Hash) and has_fields?([:fields, :last_move, :score])
-
-        # we're doing this over and over when we communicate
-        # I seriously hope it does not happen way too often!
-        errors = { error: "Bad status '#{@request}', couldn't load board" }
-
-        # report of the error
-        @socket.send_string @errors.to_yaml
-        @tries += 1
-
-        # it does not validate
-        false
-      else
-        # it does validate
-        true
-      end
-    end
-
-    while true
-      # TODO: if YAML couldn't load or it doesn't contain
-      @socket.recv_string(@request) until validates(@request)
-
-      #load the yaml of the request and tell the player to make a move
-      status = YAML.load @request
-
-      # let the player make a move and inform the server
-      @socket.send_string player.make_a_move(status)
-
-      # stop for a second
-      sleep 1
-    end
-
-    # kill the running process
-    Process.kill(:SIGINT, pid_server) if spawn_server
-
-    # cleanly close the socket
-    @socket.close
-  end
-
-end
+require './the2048gameprocesses'
 
 
 if __FILE__ == $0
@@ -109,5 +26,6 @@ if __FILE__ == $0
     end
   end.parse!
 
-  Server.new.run options[:host], options[:port], options[:spawn_server]
+  # Run the client
+  The2048GameProcesses::Client.new.run options[:host], options[:port], options[:spawn_server]
 end

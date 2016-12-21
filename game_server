@@ -1,73 +1,8 @@
 #!/usr/bin/env ruby
 
 require 'optparse'
-require 'rubygems'
-require 'ffi-rzmq'
 
-require './the2048game'
-
-
-def run(port=nil)
-  # runs the game
-
-  # select a random port if none is set
-  port = Array(6000...7000).sample if port.nil?
-
-  # socket for communication
-  context = ZMQ::Context.new(1)
-  @socket = context.socket(ZMQ::REQ)
-  @socket.bind("tcp://*:#{port}")
-
-  # create the board
-  board = The2048Game::Board.new
-
-  # the request validation logic is separated from the rest of the script
-  # and put into its own function (called validates). To simplify this task
-  # we're going to use closures!
-  @reply = ''
-  @tries = 0
-
-  # we need a place to store the and the reply
-
-  def communicate(board)
-    # handles the communication between the client and the server
-    # this function obfuscates some of the logic, so please take a closer look at it
-
-    # we're doing this over and over when we communicate
-    # I seriously hope it does not happen way too often!
-    errors = { error: "Bad request '#{@reply}', try #{The2048Game::DIRECTIONS.join(', ')}" }
-
-    # send the board
-    board.update(errors.update({tries: @tries})) if @tries > 0
-    @socket.send_string board.to_yaml
-
-    # increase the counter of tries
-    @tries += 1
-
-    # get 
-    @socket.recv_string @reply
-  end
-
-  while true
-    # send the current status of the board to the client
-    communicate(board.to_hash) until (board.directions + ['exit']).include?(@reply)
-
-    # exit if requested
-    break if @reply.eql? 'exit'
-
-    # move the fields in the requested direction
-    board.move! @reply
-
-    # check if the game is over and start a new one if needed
-    board = The2048Game::Board.new if board.game_over?
-
-    # reset the number of tries
-    @tries = 0
-  end
-
-  # cleanly close the socket
-  socket.close
-end
+require './the2048gameprocesses'
 
 
 if __FILE__ == $0
@@ -88,6 +23,9 @@ if __FILE__ == $0
     end
   end.parse!
 
+  # todo: improve this by allowing several ports and spawning several Servers in concurrency
+
   # run the game listening on the given port
-  run options[:port]
+  The2048GameProcesses::Server.new.run options[:port]
+
 end

@@ -1,5 +1,9 @@
-require 'test/unit'
 require 'ffi-rzmq'
+require 'test/unit'
+require 'yaml'
+
+require './the2048gameprocesses'
+require './the2048game'
 
 class GameTest < Test::Unit::TestCase
 
@@ -10,51 +14,88 @@ class GameTest < Test::Unit::TestCase
 
     # socket for communication
     @context = ZMQ::Context.new 1
+
+    # start the server and the client
+    @server = fork { The2048GameProcesses::Server.new.run @ports.first }
+    @client = fork { The2048GameProcesses::Client.new.run @host, @ports.last, false }
   end
+
 
   def teardown
-    # teardown something?
+
+    # todo: send exit message to processes and timeout
+
+    # the server and the client, dash-nine-em'!
+    Process.kill 9, @server
+    Process.kill 9, @client
   end
 
-  def test_man_in_the_middle
 
-    # start the server and connect
-    pid_server = Process.spawn "ruby game_server -p #{@ports.first} >/dev/null 2>&1"
-    # do asertion here
+  def server_socket
+    "tcp://#{@host}:#{@ports.first}"
+  end
 
+  def client_socket
+    "tcp://*:#{@ports.last}"
+  end
+
+
+  def test_server_connection
+    socket = @context.socket ZMQ::REP
+    rc = socket.connect server_socket
+    assert_equal 0, rc, "Server socket connection assertion"
+    puts "Successfully connected to server on socket #{server_socket}"
+
+    rc = socket.close
+    assert_equal 0, rc, "Server socket closing assertion"
+    puts "Successfully closed socket to server"
+  end
+
+
+  def test_client_connection
+    socket = @context.socket ZMQ::REQ
+    rc = socket.bind client_socket
+    assert_equal 0, rc, "Client connection assertion"
+    puts "Successfully bound socket for client on #{client_socket}"
+
+    rc = socket.close
+    assert_equal 0, rc, "Client socket closing assertion"
+    puts "Closed socket for client cleanly"
+  end
+
+
+  def test_communication
+    # generate and connect / bind the sockets
     to_game_server = @context.socket ZMQ::REP
-    to_game_server.connect "tcp://#{@host}:#{@ports.first}" # do asertion here
-
-    print "Connected to socket tcp://#{@host}:#{@ports.first} with PID #{pid_server} \n"
-
-    # start the client and connect
-    pid_client = Process.spawn "ruby game_client -p #{@ports.last} >/dev/null 2>&1"
-    # do asertion here
-
     to_game_client = @context.socket ZMQ::REQ
-    to_game_client.bind "tcp://*:#{@ports.last}" # do asertion here
+    to_game_server.connect server_socket
+    to_game_client.bind client_socket
 
-    print "Bound to socket tcp://*:#{@ports.last} with PID #{pid_server} \n"
+    puts "MiM connected to server on socket #{server_socket}"
+    puts "MiM bound for client to socket #{client_socket}"
 
-    # deal the request
-    request = ''
-    to_game_server.recv_string request # do asertion here
-    to_game_client.send_string request # do asertion here
+    # handle the request
+    puts "Handling the request"
+    request = ""
+    assert_not_equal 0, to_game_server.recv_string(request), "Request (board status) size assertion"
+    assert YAML.load(request).is_a?(Hash), "Request (board status) type assertion"
+    puts "Received a valid request from the server"
 
-    print "Man in the middle!"
+    assert_not_equal 0, to_game_client.send_string(request), "Request (board status) size assertion"
+    puts "Forwarded request to client"
 
-    # deal the reply
-    reply = ''
-    to_game_client.recv_string reply # do asertion here
-    to_game_server.send_string reply # do asertion here
+    # handle the reply
+    puts "Handling the reply"
+    reply = ""
+    assert_not_equal 0, to_game_client.recv_string(reply), "Reply (move direction) size assertion"
+    assert ['left', 'right', 'up', 'down'].include?(reply), "Reply (move direction) invalid assertion"
+    puts "Received a valid reply from the client"
+    assert_not_equal 0, to_game_server.send_string(reply), "Reply (move direction) size assertion"
+    puts "Forwarded reply to server"
 
     # cleanly close the sockets
-    to_game_client.close
     to_game_server.close
-
-    # stops the server and the client
-    Process.kill(:SIGINT, pid_server) # do asertion here
-    Process.kill(:SIGINT, pid_client) # do asertion here
+    to_game_client.close
   end
 
 end
