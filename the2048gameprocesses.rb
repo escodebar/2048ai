@@ -10,53 +10,6 @@ module The2048GameProcesses
 
   # Some classes
 
-  class Server
-    # Serves the game
-
-    def initialize()
-      # socket for communication
-      @context = ZMQ::Context.new 1
-
-      # create the board
-      @board = The2048Game::Board.new
-    end
-
-
-    def run(port=nil)
-      # todo: implement fork here?
-
-      # select a random port if none is given
-      port = Array(6000...7000).sample if port.nil?
-      tcp = "tcp://*:#{port}"
-      socket = @context.socket(ZMQ::REQ)
-      socket.bind tcp
-      puts "Game server running and bound to #{tcp}"
-      puts "Waiting for REQ"
-
-      # the request validation logic is separated from the rest of the script
-      # and put into its own function (called validates). To simplify this task
-      # we're going to use closures!
-      reply = ''
-
-      while true
-        # send the current status of the board to the client and get its reply
-        socket.send_string @board.to_yaml
-        socket.recv_string reply
-
-        # exit if requested
-        break if reply.eql? 'exit'
-
-        # move the fields in the requested direction
-        @board.move!(reply) unless reply.eql? 'repeat'
-
-        # check if the game is over and start a new one if needed
-        @board = The2048Game::Board.new if @board.game_over?
-      end
-
-    end
-
-  end
-
 
   class Client
     # Plays the game
@@ -71,7 +24,10 @@ module The2048GameProcesses
       @context = ZMQ::Context.new 1
 
       # initialize the player
-      @player = The2048GameAI::Player.new
+      @strategists = The2048GameAI::get_strategists_classes.collect do |strategist|
+        strategist.new
+      end
+      @player = The2048GameAI::Player.new @strategists
 
       # the objects attributes
       @status = {}
@@ -122,10 +78,9 @@ module The2048GameProcesses
         request = ''
         socket.recv_string(request)
 
-        puts request
-
         # if it can be processed
         if !!process_request(request)
+          puts @status
           # let the player make a move
           socket.send_string @player.make_a_move(@status)
         else
@@ -142,6 +97,54 @@ module The2048GameProcesses
 
       # cleanly close the socket
       socket.close
+    end
+
+  end
+
+
+  class Server
+    # Serves the game
+
+    def initialize()
+      # socket for communication
+      @context = ZMQ::Context.new 1
+
+      # create the board
+      @board = The2048Game::Board.new
+    end
+
+
+    def run(port=nil)
+      # todo: implement fork here?
+
+      # select a random port if none is given
+      port = Array(6000...7000).sample if port.nil?
+      tcp = "tcp://*:#{port}"
+      socket = @context.socket(ZMQ::REQ)
+      socket.bind tcp
+      puts "Game server running and bound to #{tcp}"
+      puts "Waiting for REQ"
+
+      # the request validation logic is separated from the rest of the script
+      # and put into its own function (called validates). To simplify this task
+      # we're going to use closures!
+      reply = ''
+
+      while true
+        # send the current status of the board to the client and get its reply
+        socket.send_string @board.to_yaml
+        socket.recv_string reply
+
+        # exit if requested
+        break if reply.eql? 'exit'
+
+        # move the fields in the requested direction
+        @board.move!(reply) unless reply.eql? 'repeat'
+
+        # check if the game is over and start a new one if needed
+        @board = The2048Game::Board.new if @board.game_over?
+      end
+
     end
 
   end

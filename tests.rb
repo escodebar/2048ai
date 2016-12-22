@@ -22,7 +22,6 @@ class GameTest < Test::Unit::TestCase
 
 
   def teardown
-
     # todo: send exit message to processes and timeout
 
     # the server and the client, dash-nine-em'!

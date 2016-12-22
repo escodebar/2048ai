@@ -24,11 +24,11 @@ module The2048Game
       # start the field with nil values and populate two of them
       @fields = fields
       populate_nil! 2 if (fields - [nil]).empty?
-      display
 
       # initializes the total and the score of the last move
       @last_move = 0
       @total_score = 0
+      @total_moves = 0
     end
 
 
@@ -114,6 +114,7 @@ module The2048Game
       # compacting certainly gave a heap of points, let's add them to the total score to keep the
       # happy player happy and playing happyly
       @total_score += @last_move
+      @total_moves += 1
 
       # now we deal again with the 4 different cases to map the compactables back to their prior form
       # as rows or columns in order to be flatteden correctly into the field
@@ -171,8 +172,16 @@ module The2048Game
         _nils << elem if elem.nil?
         _nils 
       end
-      _rows_compactable = rows.inject(false) { |total, row| total | row.compactable_2048? }
-      _cols_compactable = cols.inject(false) { |total, col| total | col.compactable_2048? }
+
+      # check if the rows are compactable
+      _rows_compactable = rows.inject(false) do |total, row|
+        total | row.compactable_2048? | row.reverse.compactable_2048?
+      end
+
+      # check if the columns are compactable
+      _cols_compactable = cols.inject(false) do |total, col|
+        total | col.compactable_2048? | col.reverse.compactable_2048?
+      end
 
       # check if the game is over
       _nils.empty? and !_rows_compactable and !_cols_compactable
@@ -184,6 +193,7 @@ module The2048Game
       {
         fields: @fields,
         last_move: @last_move,
+        total_moves: @total_moves,
         score: @total_score
       }
     end

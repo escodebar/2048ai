@@ -3,6 +3,17 @@ require './the2048game' # some strategist require a board to think
 
 module The2048GameAI
 
+  ## Some useful functions
+
+  def self.get_strategists_classes
+    The2048GameAI.constants.collect do |c|
+      _class = The2048GameAI.const_get(c)
+      _class if _class < Strategist
+    end - [nil]
+  end
+
+  ## Some classes
+
   # The Players
 
   class Player
@@ -24,9 +35,9 @@ module The2048GameAI
     end
 
 
-    def consult_strategists
-      # TODO: use the strategists to consult the next move to make
-      # Each strategist should have a weighting
+    def consult_strategists status
+      @strategists.each do |strategist|
+      end
       The2048Game::DIRECTIONS.sample
     end
 
@@ -113,56 +124,56 @@ module The2048GameAI
 
   class Strategist
     # A strategist with no strategy
-
-    def initialize(fields)
-      @fields = fields
-      @board = StrategyBoard.new fields
+    def initialize
+      @directions = StrategyBoard.new.directions
     end
 
-    def choice(samples=1)
+    def choice(fields=[], samples=1)
       raise NotImplementedError, "I just pretend to be a Strategist, ask one of my subclasses"
     end
 
-    def veto(samples=1)
+    def veto(fields=[], samples=1)
       raise NotImplementedError, "I just pretend to be a Strategist, ask one of my subclasses"
     end
   end
 
 
   class TotallyRandomStrategist < Strategist
-    # A strategist with a random strategy
+    # A strategist with a total random strategy
 
-    def choice(samples=1)
+    def choice(fields=[], samples=1)
       # Selects a direction randomly
-      @board.directions.sample samples
+      @directions.sample samples
     end
 
-    def veto(samples=1)
+    def veto(fields=[], samples=1)
       # selects a veto randomly
-      @board.directions.sample samples
+      @directions.sample samples
     end
   end
 
 
   class RandomStrategist < Strategist
     # A smart random strategist with some sense for logics
+    # If he choses a direction he won't veto it
 
-    def initialize(fields)
-      super.initialize(fields)
+    def initialize
+      # todo: call the initializer of the super class in order to get the directions
+      @directions = StrategyBoard.new.directions
       @possible_vetos = []
     end
 
-    def choice(samples=1)
+    def choice(fields=[], samples=1)
       # Selects a direction randomly
-      _chosen = @board.directions.sample samples
+      _chosen = @directions.sample samples
 
       # keep the others for the possible veto
-      @possible_vetos = @board.directions - chosen
+      @possible_vetos = @directions - _chosen
 
       _chosen
     end
 
-    def veto(samples=1)
+    def veto(fields=[], samples=1)
       # if a decision upon the choice was made (see def choice), the veto list
       # should be populated and a sample of it can be taken
       @possible_vetos.sample samples if @possible_vetos.length > 0
@@ -174,15 +185,16 @@ module The2048GameAI
   class PointMaximizer < Strategist
     # This choses the move which gives the maximum score
 
-    def choice(samples=1)
+    def choice(fields=[], samples=1)
       # for each choice, compute the score of the move
-      @board.directions.collect do |direction|
+      @board = StrategyBoard.new fields
+      @directions.collect do |direction|
         [@board.dup.move!(direction), direction]
       # then sort it by the value of the move and pick the best scores
       end.sort { |a, b| a[1] <=> b[1] }.slice 0...samples
     end
 
-    def veto(samples=1)
+    def veto(fields=[], samples=1)
       # if a move gives no points it is totally vetoed!
       @board.directions.inject([]) do |vetos, direction|
         _score = @board.dup.move! direction
@@ -195,7 +207,7 @@ module The2048GameAI
   class Sweeper < Strategist
     # A sweeper tries to free as many fields as possible
 
-    def choice(samples=1)
+    def choice(fields=[], samples=1)
       # which move frees the most fields?
       @board.directions.collect do |choice|
         _board = @board.dup.move! choice 
@@ -203,7 +215,7 @@ module The2048GameAI
       end.sort { |a, b| a[1] <=> b[i] }.slice 0..samples
     end
 
-    def veto(samples=1)
+    def veto(fields=[], samples=1)
       _empty = _boards.fields.inject(0) { |empty, field| empty + 1 if field.nil? }
       # which move 
       @board.directions.collect do |choice|
