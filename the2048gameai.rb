@@ -20,6 +20,8 @@ module The2048GameAI
   class Player
     # Plays the game
 
+    @@DIRECTIONS = The2048Game::DIRECTIONS
+
     def initialize(strategists=[])
       @strategists = strategists
     end
@@ -31,15 +33,34 @@ module The2048GameAI
         consult_strategists status
       else
         # If no stategist around, the clueless player sends a random direction
-        The2048Game::DIRECTIONS.sample
+        @@DIRECTIONS.sample
       end
     end
 
 
-    def consult_strategists status
-      @strategists.each do |strategist|
+    def consult_strategists(status)
+      # store the directions in a hash to make the voting a simple task
+      directions = @@DIRECTIONS.each.inject({}) do |_directions, direction|
+        _directions[direction] = 0
+        _directions
       end
-      The2048Game::DIRECTIONS.sample
+
+      # what directions chose our strategists? let them vote!
+      @strategists.each do |strategist|
+        # sum 1 to every direction chosen our strategists
+        strategist.choice(status[:fields]).each do |direction|
+          directions[direction] += 1
+        end
+
+        # subtract 1 to every direction vetoed by our strategists
+        strategist.veto(status[:fields]).each do |direction|
+          directions[direction] -= 1
+        end
+      end
+
+      # you see how 'a' and 'b' are changed in to puth the directions with
+      # the greatest number of votes in first position?
+      directions.sort { |a, b| b[1] <=> a[1] }.collect { |direction, votes| direction }.first
     end
 
   end
@@ -51,6 +72,8 @@ module The2048GameAI
     # Adds some strategy features to the standard board
 
     def fields_with_cartesian_coordinates
+      # returns the fields with cartesian coordinates
+
       def index_to_cart_coord(index)
         # turns the index of the element into cartesian coordinates
         #   x -------------------------------->
@@ -68,7 +91,6 @@ module The2048GameAI
         coordinates = index_to_cart_coord index
         collection << { x: coordinates[0], y: coordinates[1], field: elem}
       end
-
     end
 
 
@@ -94,17 +116,11 @@ module The2048GameAI
         radius += 1 unless ((((index / 4) + 1) % 4) / 2)
       end
 
-      def index_to_radius(index)
-        # turns the index into an angle
-        # TODO
-      end
-
       @fields.each.with_index.inject([]) do |collection, (elem, index)|
         radius = index_to_radius index
         angle = index_to_angle index
         collection << { r: radius, phi: angle, field: elem}
       end
-
     end
 
     def gravity
@@ -200,9 +216,10 @@ module The2048GameAI
 
     def veto(fields=[], samples=1)
       # if a move gives no points it is totally vetoed!
-      @@DIRECTIONS.inject([]) do |vetos, direction|
+      @@DIRECTIONS.each.inject([]) do |vetos, direction|
         _score = @board.dup.move! direction
         vetos << direction if @board.dup.move!(direction).eql? 0
+        vetos
       end.sample samples
     end
   end

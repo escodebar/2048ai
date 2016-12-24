@@ -30,6 +30,7 @@ class StrategistsTest < Test::Unit::TestCase
     end
   end
 
+
   def test_strategists_veto_type
     @strategists.each do |strategist|
       # give the board's status to the strategist

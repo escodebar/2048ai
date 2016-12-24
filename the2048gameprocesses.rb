@@ -10,7 +10,6 @@ module The2048GameProcesses
 
   # Some classes
 
-
   class Client
     # Plays the game
 
@@ -105,7 +104,7 @@ module The2048GameProcesses
   class Server
     # Serves the game
 
-    def initialize()
+    def initialize
       # socket for communication
       @context = ZMQ::Context.new 1
 
@@ -117,8 +116,7 @@ module The2048GameProcesses
     def run(port=nil)
       # todo: implement fork here?
 
-      # select a random port if none is given
-      port = Array(6000...7000).sample if port.nil?
+      port = Array(6000...7000).sample if port.nil?  # select a random port if none is given
       tcp = "tcp://*:#{port}"
       socket = @context.socket(ZMQ::REQ)
       socket.bind tcp
