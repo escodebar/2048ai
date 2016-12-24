@@ -131,7 +131,7 @@ module The2048GameAI
 
     def emptyness
       # returns the number of empty fields
-      @fields.inject(0) { |sum, field| sum + (elem.nil and 1 or 0) }
+      @fields.each.inject(0) { |sum, field| sum + (field.nil? and 1 or 0) }
     end
 
   end
@@ -211,14 +211,17 @@ module The2048GameAI
       @@DIRECTIONS.collect do |direction|
         [@board.dup.move!(direction), direction]
       # then sort it by the weight and pick the best scores (and finally remove the points)
-      end.sort.slice(0...samples).collect { |weight, direction | direction }
+      end.sort.reverse.slice(0...samples).collect { |weight, direction | direction }
     end
 
     def veto(fields=[], samples=1)
+      # generate the board with the given set of fields
+      @board = StrategyBoard.new fields
+
       # if a move gives no points it is totally vetoed!
-      @@DIRECTIONS.each.inject([]) do |vetos, direction|
+      @@DIRECTIONS.collect.inject([]) do |vetos, direction|
         _score = @board.dup.move! direction
-        vetos << direction if @board.dup.move!(direction).eql? 0
+        vetos << direction if _score.eql? 0
         vetos
       end.sample samples
     end
@@ -239,12 +242,9 @@ module The2048GameAI
 
         # after moving the board, compute and return its
         # emptyness along with the direction of the move
-        [board.fields.each.inject(0) do |emptyness, field|
-          emptyness + 1 if field.nil?
-          emptyness
-        end, direction]
+        [board.emptyness, direction]
       # then sort it by the emptyness and pick the best scores (and finally remove the emptyness)
-      end.sort.slice(0..samples).collect { |emptyness, direction| direction }
+      end.sort.reverse.slice(0...samples).collect { |emptyness, direction| direction }
     end
 
     def veto(fields=[], samples=1)
