@@ -3,6 +3,7 @@ require 'test/unit'
 require 'yaml'
 
 require './the2048gameprocesses'
+require './the2048gameai'
 require './the2048game'
 
 class GameTest < Test::Unit::TestCase

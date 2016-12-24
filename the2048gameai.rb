@@ -6,10 +6,11 @@ module The2048GameAI
   ## Some useful functions
 
   def self.get_strategists_classes
+    # returns all the classes which inherit from strategist
     The2048GameAI.constants.collect do |c|
       _class = The2048GameAI.const_get(c)
       _class if _class < Strategist
-    end - [nil]
+    end - [nil]  # << see what I'm doing here? I am removing all the nils!
   end
 
   ## Some classes
@@ -123,9 +124,11 @@ module The2048GameAI
   # The Strategists
 
   class Strategist
-    # A strategist with no strategy
+
+    @@DIRECTIONS = The2048Game::DIRECTIONS
+
     def initialize
-      @directions = StrategyBoard.new.directions
+      @board = StrategyBoard.new
     end
 
     def choice(fields=[], samples=1)
@@ -143,12 +146,12 @@ module The2048GameAI
 
     def choice(fields=[], samples=1)
       # Selects a direction randomly
-      @directions.sample samples
+      @@DIRECTIONS.sample samples
     end
 
     def veto(fields=[], samples=1)
       # selects a veto randomly
-      @directions.sample samples
+      @@DIRECTIONS.sample samples
     end
   end
 
@@ -159,16 +162,15 @@ module The2048GameAI
 
     def initialize
       # todo: call the initializer of the super class in order to get the directions
-      @directions = StrategyBoard.new.directions
       @possible_vetos = []
     end
 
     def choice(fields=[], samples=1)
       # Selects a direction randomly
-      _chosen = @directions.sample samples
+      _chosen = @@DIRECTIONS.sample samples
 
       # keep the others for the possible veto
-      @possible_vetos = @directions - _chosen
+      @possible_vetos = @@DIRECTIONS - _chosen
 
       _chosen
     end
@@ -176,7 +178,7 @@ module The2048GameAI
     def veto(fields=[], samples=1)
       # if a decision upon the choice was made (see def choice), the veto list
       # should be populated and a sample of it can be taken
-      @possible_vetos.sample samples if @possible_vetos.length > 0
+      @possible_vetos.length > 0 and @possible_vetos.sample(samples) or []
       # note: the random stategist has no veto before he did not make a choice
     end
   end
@@ -186,17 +188,19 @@ module The2048GameAI
     # This choses the move which gives the maximum score
 
     def choice(fields=[], samples=1)
-      # for each choice, compute the score of the move
+      # generate the board with the given set of fields
       @board = StrategyBoard.new fields
-      @directions.collect do |direction|
+
+      # for each choice, compute the points of the move
+      @@DIRECTIONS.collect do |direction|
         [@board.dup.move!(direction), direction]
-      # then sort it by the value of the move and pick the best scores
-      end.sort { |a, b| a[1] <=> b[1] }.slice 0...samples
+      # then sort it by the weight and pick the best scores (and finally remove the points)
+      end.sort.slice(0...samples).collect { |weight, direction | direction }
     end
 
     def veto(fields=[], samples=1)
       # if a move gives no points it is totally vetoed!
-      @board.directions.inject([]) do |vetos, direction|
+      @@DIRECTIONS.inject([]) do |vetos, direction|
         _score = @board.dup.move! direction
         vetos << direction if @board.dup.move!(direction).eql? 0
       end.sample samples
@@ -208,20 +212,48 @@ module The2048GameAI
     # A sweeper tries to free as many fields as possible
 
     def choice(fields=[], samples=1)
+      @board = StrategyBoard.new fields
       # which move frees the most fields?
-      @board.directions.collect do |choice|
-        _board = @board.dup.move! choice 
-        [_board.fields.inject(0) { |empty, field| empty + 1 if field.nil? }]
-      end.sort { |a, b| a[1] <=> b[i] }.slice 0..samples
+      @@DIRECTIONS.collect do |direction|
+
+        # since move changes the board, we need to duplicate it!
+        board = @board.dup
+        board.move! direction
+
+        # after moving the board, compute and return its
+        # emptyness along with the direction of the move
+        [board.fields.each.inject(0) do |emptyness, field|
+          emptyness + 1 if field.nil?
+          emptyness
+        end, direction]
+      # then sort it by the emptyness and pick the best scores (and finally remove the emptyness)
+      end.sort.slice(0..samples).collect { |emptyness, direction| direction }
     end
 
     def veto(fields=[], samples=1)
-      _empty = _boards.fields.inject(0) { |empty, field| empty + 1 if field.nil? }
-      # which move 
-      @board.directions.collect do |choice|
-        __empty = @board.dup.move!(choice).fields.inject(0) { |empty, field| empty + 1 if field.nil? }
-        choice if _empty > __empty
-      end.sample(samples)
+      @board = StrategyBoard.new fields
+      (@@DIRECTIONS.collect do |direction|
+
+        # since move changes the board, we need to duplicate it!
+        board = @board.dup
+
+        # compute the emptyness of the board before the move
+        emptyness_before = board.fields.each.inject(0) do |emptyness, field|
+          emptyness + 1 if fields.nil?
+          emptyness
+        end
+
+        # make a move in 'direction'
+        board.move! direction
+
+        # compute the emptyness of the board after the move
+        emptyness_after = board.fields.each.inject(0) do |emptyness, field|
+          emptyness + 1 if fields.nil?
+          emptyness
+        end
+
+        direction if emptyness_before < emptyness_after
+      end - [nil]).slice 0..samples
     end
   end
 

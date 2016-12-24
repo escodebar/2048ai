@@ -24,8 +24,8 @@ module The2048GameProcesses
       @context = ZMQ::Context.new 1
 
       # initialize the player
-      @strategists = The2048GameAI::get_strategists_classes.collect do |strategist|
-        strategist.new
+      @strategists = The2048GameAI::get_strategists_classes.collect do |strategist_class|
+        strategist_class.new
       end
       @player = The2048GameAI::Player.new @strategists
 
