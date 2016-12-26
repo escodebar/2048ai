@@ -1,9 +1,11 @@
-require 'yaml'
-require 'ffi-rzmq'
-
 require './array'
+require './lib2048'
 
-module The2048Game
+
+module Lib2048 end
+
+
+module Lib2048::Game
 
   # The accepted moves
   DIRECTIONS = ['left', 'right', 'up', 'down']

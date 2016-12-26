@@ -2,7 +2,7 @@
 
 require 'optparse'
 
-require './the2048gameprocesses'
+require './lib2048'
 
 
 if __FILE__ == $0
@@ -26,6 +26,6 @@ if __FILE__ == $0
   # todo: improve this by allowing several ports and spawning several Servers in concurrency
 
   # run the game listening on the given port
-  The2048GameProcesses::Server.new.run options[:port]
+  Lib2048::Processes::Server.new.run options[:port]
 
 end

@@ -2,9 +2,7 @@ require 'ffi-rzmq'
 require 'test/unit'
 require 'yaml'
 
-require './the2048gameprocesses'
-require './the2048gameai'
-require './the2048game'
+require './lib2048'
 
 class GameTest < Test::Unit::TestCase
 
@@ -17,8 +15,8 @@ class GameTest < Test::Unit::TestCase
     @context = ZMQ::Context.new 1
 
     # start the server and the client
-    @server = fork { The2048GameProcesses::Server.new.run @ports.first }
-    @client = fork { The2048GameProcesses::Client.new.run @host, @ports.last, false }
+    @server = fork { Lib2048::Processes::Server.new.run @ports.first }
+    @client = fork { Lib2048::Processes::Client.new.run @host, @ports.last, false }
   end
 
 

@@ -1,18 +1,17 @@
 require 'test/unit'
 
-require './the2048game'
-require './the2048gameai'
+require './lib2048'
 
 class StrategistsTest < Test::Unit::TestCase
 
   def setup
     # setup the strategists
-    @strategists = The2048GameAI::get_strategists_classes.collect do |strategist_class|
+    @strategists = Lib2048::AI::get_strategists_classes.collect do |strategist_class|
       strategist_class.new
     end
 
     # setup the board
-    @board = The2048Game::Board.new
+    @board = Lib2048::Game::Board.new
   end
 
 
@@ -43,7 +42,7 @@ class StrategistsTest < Test::Unit::TestCase
 
   def test_random_strategist
     # create the random strategist
-    strategist = The2048GameAI::RandomStrategist.new
+    strategist = Lib2048::AI::RandomStrategist.new
     # check 100 times if the random strategist vetos his own choice
     100.times { assert_not_equal strategist.choice.eql?(strategist.veto), "#{strategist.class}'s vetos his own choice" }
   end
@@ -51,7 +50,7 @@ class StrategistsTest < Test::Unit::TestCase
 
   def test_point_maximizer
     # create the point maximizer
-    strategist = The2048GameAI::PointMaximizer.new
+    strategist = Lib2048::AI::PointMaximizer.new
 
     # first, let's test the choices
 
@@ -106,7 +105,7 @@ class StrategistsTest < Test::Unit::TestCase
 
   def test_sweeper
     # create the point maximizer
-    strategist = The2048GameAI::Sweeper.new
+    strategist = Lib2048::AI::Sweeper.new
 
     # we're testing some fields whose choice we know
     fields_set = {

@@ -1,10 +1,13 @@
 require 'ffi-rzmq'
 require 'yaml'
 
-require './the2048game.rb'
-require './the2048gameai.rb'
+require './lib2048'
 
-module The2048GameProcesses
+
+module Lib2048 end
+
+
+module Lib2048::Processes
   # Contains the logic related to communication layer and the Objects which are run
   # in the various processes.
 
@@ -14,7 +17,7 @@ module The2048GameProcesses
     # Plays the game
 
     # the keys to validate the status
-    @@keys = The2048Game::Board.new.to_hash.keys
+    @@keys = Lib2048::Game::Board.new.to_hash.keys
 
 
     def initialize
@@ -23,10 +26,10 @@ module The2048GameProcesses
       @context = ZMQ::Context.new 1
 
       # initialize the player
-      @strategists = The2048GameAI::get_strategists_classes.collect do |strategist_class|
+      @strategists = Lib2048::AI::get_strategists_classes.collect do |strategist_class|
         strategist_class.new
       end
-      @player = The2048GameAI::Player.new @strategists
+      @player = Lib2048::AI::Player.new @strategists
 
       # the objects attributes
       @status = {}
@@ -109,7 +112,7 @@ module The2048GameProcesses
       @context = ZMQ::Context.new 1
 
       # create the board
-      @board = The2048Game::Board.new
+      @board = Lib2048::Game::Board.new
     end
 
 
@@ -140,7 +143,7 @@ module The2048GameProcesses
         @board.move!(reply) unless reply.eql? 'repeat'
 
         # check if the game is over and start a new one if needed
-        @board = The2048Game::Board.new if @board.game_over?
+        @board = Lib2048::Game::Board.new if @board.game_over?
       end
 
     end

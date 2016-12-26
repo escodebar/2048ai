@@ -2,7 +2,7 @@
 
 require 'optparse'
 
-require './the2048gameprocesses'
+require './lib2048'
 
 
 if __FILE__ == $0
@@ -27,5 +27,5 @@ if __FILE__ == $0
   end.parse!
 
   # Run the client
-  The2048GameProcesses::Client.new.run options[:host], options[:port], options[:spawn_server]
+  Lib2048::Processes::Client.new.run options[:host], options[:port], options[:spawn_server]
 end

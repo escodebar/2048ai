@@ -1,14 +1,17 @@
-require './the2048game' # some strategist require a board to think
+require './lib2048'
 
 
-module The2048GameAI
+module Lib2048 end
+
+
+module Lib2048::AI
 
   ## Some useful functions
 
   def self.get_strategists_classes
     # returns all the classes which inherit from strategist
-    The2048GameAI.constants.collect do |c|
-      _class = The2048GameAI.const_get(c)
+    Lib2048::AI.constants.collect do |c|
+      _class = Lib2048::AI.const_get(c)
       _class if _class < Strategist
     end - [nil]  # << see what I'm doing here? I am removing all the nils!
   end
@@ -20,7 +23,7 @@ module The2048GameAI
   class Player
     # Plays the game
 
-    @@DIRECTIONS = The2048Game::DIRECTIONS
+    @@DIRECTIONS = Lib2048::Game::DIRECTIONS
 
     def initialize(strategists=[])
       @strategists = strategists
@@ -68,7 +71,7 @@ module The2048GameAI
 
   # The Customized Boards
 
-  class StrategyBoard < The2048Game::Board
+  class StrategyBoard < Lib2048::Game::Board
     # Adds some strategy features to the standard board
 
     def fields_with_cartesian_coordinates
@@ -141,7 +144,7 @@ module The2048GameAI
 
   class Strategist
 
-    @@DIRECTIONS = The2048Game::DIRECTIONS
+    @@DIRECTIONS = Lib2048::Game::DIRECTIONS
 
     def initialize
       @board = StrategyBoard.new
