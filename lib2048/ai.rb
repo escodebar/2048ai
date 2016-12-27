@@ -305,4 +305,38 @@ module Lib2048::AI
     end
   end
 
+
+  # Neural Network components
+
+  class Perceptron
+
+    def initialize(learn_speed, number_weights)
+      @speed = learn_speed
+      @weights = (0...number_weights).collect { rand * 2 - 1 }
+    end
+
+
+    def feed_forward(inputs)
+      # computes the scalar product of the vectors
+      total = inputs.zip(@weights).inject(0) do |sum, educts|
+        sum + educts.reduce(:*)
+      end
+
+      total > 0 and 1 or -1
+    end
+
+
+    def train(inputs, desired_output)
+
+      # compute the error of our perceptron for the given input
+      error = desired_output - feed_forward(inputs)
+
+      # use the error to compute the new weights
+      @weights = inputs.zip(@weights).collect do |_input, _weight|
+        _weight + @speed * error * _input
+      end
+    end
+
+  end
+
 end
