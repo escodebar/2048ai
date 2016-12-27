@@ -126,15 +126,43 @@ module Lib2048::AI
       end
     end
 
+
+    def non_nil_fields
+      @fields - [nil]
+    end
+
+
     def gravity
       # returns the center of gravity of the field
-      # TODO
+      # todo
     end
 
 
     def emptyness
       # returns the number of empty fields
-      @fields.each.inject(0) { |sum, field| sum + (field.nil? and 1 or 0) }
+      @fields.count nil
+    end
+
+
+    def max
+      # returns the value of the biggest field
+      @fields.max
+    end
+
+
+    def pairs
+      # returns the values of the pairs
+      unless non_nil_fields.length == non_nil_fields.uniq.length
+        (non_nil_fields.uniq.collect do |field|
+          field if @fields.count(field) > 1
+        end - [nil]).first
+      end
+    end
+
+
+    def greatest_pair_distance
+      # returns the distance between the fields with the same value
+      # todo
     end
 
   end
