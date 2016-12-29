@@ -44,7 +44,10 @@ class StrategistsTest < Test::Unit::TestCase
     # create the random strategist
     strategist = Lib2048::AI::RandomStrategist.new
     # check 100 times if the random strategist vetos his own choice
-    100.times { assert_not_equal strategist.choice.eql?(strategist.veto), "#{strategist.class}'s vetos his own choice" }
+    contradiction = 100.times.inject(false) do |previously_contradicted|
+      previously_contradicted or strategist.choice.eql? strategist.veto
+    end
+    assert !contradiction, "#{strategist.class}'s vetos his own choice"
   end
 
 
