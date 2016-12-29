@@ -20,13 +20,21 @@ module Lib2048::Processes
     @@keys = Lib2048::Game::Board.new.to_hash.keys
 
 
-    def initialize
+    def initialize(strategists_classes=[])
       # socket for communication
       @context = ZMQ::Context.new 1
       # initialize the player
-      @strategists = Lib2048::AI::get_strategists_classes.collect do |strategist_class|
-        strategist_class.new
-      end
+      @strategists = if strategists_classes.empty?
+                       Lib2048::AI::get_strategists_classes.sample(3).collect do |_class|
+                         _class.new
+                       end
+                     else
+                       Lib2048::AI.get_strategists_classes.collect do |_class|
+                         if strategists_classes.include? String(strategist_class)
+                           strategist_class.new
+                         end
+                       end - [nil]
+                     end
       @player = Lib2048::AI::Player.new @strategists
       # the objects attributes
       @status = {}

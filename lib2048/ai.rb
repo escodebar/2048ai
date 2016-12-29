@@ -188,7 +188,7 @@ module Lib2048::AI
   end
 
 
-  class TotallyRandomStrategist < Strategist
+  class CompletelyRandom < Strategist
     # A strategist with a total random strategy
 
     def choice(fields=[], samples=1)
