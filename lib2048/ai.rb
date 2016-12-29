@@ -317,7 +317,7 @@ module Lib2048::AI
 
 
     def feed_forward(inputs)
-      # computes the scalar product of the vectors
+      # computes the scalar product of the vectors (inputs and weights)
       total = inputs.zip(@weights).inject(0) do |sum, educts|
         sum + educts.reduce(:*)
       end
@@ -331,7 +331,7 @@ module Lib2048::AI
       # compute the error of our perceptron for the given input
       error = desired_output - feed_forward(inputs)
 
-      # use the error to compute the new weights
+      # use the error to compute the new weights (ergo learn)
       @weights = inputs.zip(@weights).collect do |_input, _weight|
         _weight + @speed * error * _input
       end

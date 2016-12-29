@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+
+require './lib2048'
+
+
+if __FILE__ == $0
+  # parse the program options
+  options = {
+    training_port: 9999,
+    feedforward_port: 10111,
+    learning_rate: 0.01
+  }
+  OptionParser.new do |opts|
+    # the program banner
+    opts.banner = "Usage: memberberries [options]"
+    # the program options
+    opts.on('-t', '--train TRAINING_PORT', 'PULL socket for training tasks') { |v| options[:training_port] = v }
+    opts.on('-c', '--compute COMPUTING_PORT', 'REP socket for computing tasks') { |v| options[:feedforward_port] = v }
+    opts.on('-r', '--rate LEARNING_RATE', 'The learning rate for the perceptrons') { |v| options[:learning_rate] = v }
+    # the help option
+    opts.on('-h', '--help', 'Print this help') do
+      puts opts
+      exit
+    end
+  end.parse!
+  # run the game listening on the given port
+  Lib2048::AI::Memory.new(options[:speed]).run options[:training_port], options[:feedforward_port]
+end
