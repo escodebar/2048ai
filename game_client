@@ -23,10 +23,10 @@ if __FILE__ == $0
     opts.on('-p', '--port PORT', 'Server port') { |v| options[:port] = v }
     opts.on('-H', '--host HOST', 'Server host') { |v| options[:host] = v }
     opts.on('-s', '--server', 'Spawn server') { |v| options[:spawn_server] = !!v }
-    opts.on('-cr', '--completely_random', 'Completely random moves') { |v| options[:strategists] << 'CompletelyRandom' }
-    opts.on('-rs', '--random', 'Random moves') { |v| options[:strategists] << 'RandomStrategy' }
-    opts.on('-pm', '--point_maximizer', 'Moves with high scores prefered') { |v| options[:strategists] << 'PointMaximizer' }
-    opts.on('-sw', '--sweeper', 'Move with most empty fields prefered') { |v| options[:strategists] << 'Sweeper' }
+    opts.on('-c', '--completely_random', 'Completely random moves') { |v| options[:strategists] << 'CompletelyRandom' }
+    opts.on('-r', '--random', 'Random moves') { |v| options[:strategists] << 'RandomStrategy' }
+    opts.on('-m', '--point_maximizer', 'Moves with high scores prefered') { |v| options[:strategists] << 'PointMaximizer' }
+    opts.on('-w', '--sweeper', 'Move with most empty fields prefered') { |v| options[:strategists] << 'Sweeper' }
 
     # the help option
     opts.on('-h', '--help', 'Print this help') do
