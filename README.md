@@ -3,19 +3,55 @@ Implementation of a software to find and evaluate strategies for the 2048 game
 
 # Contents
 
-## game_server.rb
-The game server serves games (how unobvious).
-You can start it from shell with an optional port argument, else it will bind to tcp://*:5555.
-After binding to the socket and creating the game's board, the game server will listen to incoming requests.
-If the request is a valid direction, the movement is performed on the board and the resulting board is replied along with the score and the points gathered during the last move.
+## lib2048
 
-Use a ZeroMQ REQ socket to communicate with the game server and send it strings "up", "down", "left" or "right".
+Contains all the ruby modules.
 
-## player.rb
-The player starts a game server, connects to it and starts to play, with random moves.
-This player keeps playing forever and ever and ever and ever.
-The player will contain the decision making logic.
-You can start the player in the shell with an optional host and port option, else it will connect to tcp://localhost:5555.
+- game.rb
+- ai.rb
+- processes.rb
 
-## board.rb, array.rb
-Contains the game's board and some monkey patches for Array.
+## tests
+
+Contains all the tests.
+
+## game_server.
+
+The game server requests clients to make the next move on a 2048 board.
+The game server is a tcp interface for the Board object.
+
+```
+Usage: game_server [options]
+    -p, --port PORT                  Server port
+    -h, --help                       Print this help
+```
+
+## game_client
+
+The game client communicates with a game server, sending commands like up, down, left or right.
+The game client is a tcp interface for the Player object.
+
+```
+Usage: game_client [options]
+    -p, --port PORT                  Server port
+    -H, --host HOST                  Server host
+    -s, --server                     Spawn server
+    -c, --completely_random          Completely random moves
+    -r, --random                     Random moves
+    -m, --point_maximizer            Moves with high scores prefered
+    -w, --sweeper                    Move with most empty fields prefered
+    -h, --help                       Print this help
+```
+
+## memberberries
+
+The memberberries are the neural network learning all the moves by all the players.
+Memberberries is a tcp interface for the Memory object.
+
+```
+Usage: memberberries [options]
+    -t, --train TRAINING_PORT        PULL socket for training tasks
+    -c, --compute COMPUTING_PORT     REP socket for computing tasks
+    -r, --rate LEARNING_RATE         The learning rate for the perceptrons
+    -h, --help                       Print this help
+```
