@@ -1,11 +1,6 @@
 require 'ffi-rzmq'
 require 'yaml'
 
-require './lib2048'
-
-
-module Lib2048 end
-
 
 module Lib2048::Processes
   # Contains the logic related to communication layer and the Objects which are run

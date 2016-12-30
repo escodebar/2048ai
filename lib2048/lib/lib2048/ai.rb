@@ -1,9 +1,3 @@
-require './lib2048'
-
-
-module Lib2048 end
-
-
 module Lib2048::AI
 
   ## Some useful functions
