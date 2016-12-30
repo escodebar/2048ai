@@ -2,7 +2,7 @@
 
 require 'optparse'
 
-require './lib2048'
+require 'lib2048'
 
 
 if __FILE__ == $0

@@ -2,30 +2,24 @@
 
 require 'optparse'
 
-require './lib2048'
+require 'lib2048'
 
 
 if __FILE__ == $0
-
   # parse the program options
   options = { :port => 5555 }
   OptionParser.new do |opts|
     # the program banner
     opts.banner = "Usage: game_server [options]"
-
     # the program options
     opts.on('-p', '--port PORT', 'Server port') { |v| options[:port] = v}
-
     # the help option
     opts.on('-h', '--help', 'Print this help') do
       puts opts
       exit
     end
   end.parse!
-
   # todo: improve this by allowing several ports and spawning several Servers in concurrency
-
   # run the game listening on the given port
   Lib2048::Processes::Server.new.run options[:port]
-
 end

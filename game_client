@@ -2,11 +2,10 @@
 
 require 'optparse'
 
-require './lib2048'
+require 'lib2048'
 
 
 if __FILE__ == $0
-
   # parse the program options
   options = {
     host: "localhost",
@@ -14,11 +13,9 @@ if __FILE__ == $0
     spawn_server: false,
     strategists: []
   }
-
   OptionParser.new do |opts|
     # the program banner
     opts.banner = "Usage: game_client [options]"
-
     # the program options
     opts.on('-p', '--port PORT', 'Server port') { |v| options[:port] = v }
     opts.on('-H', '--host HOST', 'Server host') { |v| options[:host] = v }
@@ -27,14 +24,12 @@ if __FILE__ == $0
     opts.on('-r', '--random', 'Random moves') { |v| options[:strategists] << 'RandomStrategy' }
     opts.on('-m', '--point_maximizer', 'Moves with high scores prefered') { |v| options[:strategists] << 'PointMaximizer' }
     opts.on('-w', '--sweeper', 'Move with most empty fields prefered') { |v| options[:strategists] << 'Sweeper' }
-
     # the help option
     opts.on('-h', '--help', 'Print this help') do
       puts opts
       exit
     end
   end.parse!
-
   # Run the client
   Lib2048::Processes::Client.new(options[:strategists]).run options[:host], options[:port], options[:spawn_server]
 end
