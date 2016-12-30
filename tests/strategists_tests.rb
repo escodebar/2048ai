@@ -1,6 +1,6 @@
 require 'test/unit'
 
-require './lib2048'
+require 'lib2048'
 
 class StrategistsTest < Test::Unit::TestCase
 

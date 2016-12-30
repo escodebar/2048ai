@@ -2,7 +2,7 @@ require 'ffi-rzmq'
 require 'test/unit'
 require 'yaml'
 
-require './lib2048'
+require 'lib2048'
 
 class GameTest < Test::Unit::TestCase
 
