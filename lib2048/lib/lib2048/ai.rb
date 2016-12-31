@@ -155,16 +155,22 @@ module Lib2048::AI
     end
 
 
-    def paired_fields
-      # returns the fields with neighboring equivalent fields
+    def paired_fields_in_cols
+      # returns the fields with neighboring equivalent fields in columns
       unless non_nil_fields.length == non_nil_fields.uniq.length
 
         # let's see how many fields of the same value are neighboring
         # but let's check only for the ones we know have pairs
-        fields_with_pairs.each do |value|
+        fields_with_pairs.collect do |value|
 
           # first let's check the columns of the board for vertically neighboring
-          # fields with the same value
+          # pairs of fields. the column and rows of the pairs are stored in an array
+          # example field for pairs of value 2
+          #     nil   nil   nil     2
+          #       8     2   nil     2
+          #       8     2   nil   nil
+          #     nil   nil     4     4
+          # pairs => [[[1, 1], [2, 1]], [[0, 3], [1, 3]]]
 
           # collect all the coordinates of the neighboring fields
           pairs = cols.each_with_index.inject([]) do |coordinates, (col, col_nr)|
@@ -175,31 +181,26 @@ module Lib2048::AI
             end - [nil]
           end
 
-          # et pour les rowmands, c'est la même chose
-          pairs += rows.each_with_index.inject([]) do |coordinates, (row, row_nr)|
+          # finally return the pairs found for the value
+          [value, pairs]
+        end.to_h
+      end
+    end
+
+
+    def paired_fields_in_rows
+      # returns the fields with neighboring equivalent fields in rows
+      unless non_nil_fields.length == non_nil_fields.uniq.length
+        # et pour les rowmands, c'est la même chose
+        fields_with_pairs.collect do |value|
+          pairs = rows.each_with_index.inject([]) do |coordinates, (row, row_nr)|
             coordinates + row.each_cons(2).with_index.collect do |pair, col_nr|
               [[row_nr, col_nr], [row_nr, col_nr + 1]] if pair == [value]*2
-            end
+            end - [nil]
           end
-
-          # now some fields can be part of two (or more!) pairs.
-          # the next step is to maximize the number of pairs.
-          # since the connected neighbors form a tree (or - even tough unlikely - cycles!),
-          # the maximal number of pairs is achieved by starting at the ends of the tree,
-          # cut chunks (pairs) out of it and recurse with the remaining part of the tree.
-          # the ends are found by generating a histogram of the coordinates of the fields
-          # in a pair
-          histogram = pairs.flatten(1).uniq.collect { |coordinate| [coordinate, 0] }.to_h
-          pairs.flatten(1).each { |coordinate| histogram[coordinate] += 1 }
-
-          # todo: continue here - sort the histogram by lowest values and start up looking
-          # for pairs containing the lowest coordinates.
-
-
-        end
-
+          [value, pairs]
+        end.to_h
       end
-
     end
 
 

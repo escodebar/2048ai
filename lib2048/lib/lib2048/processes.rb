@@ -25,7 +25,7 @@ module Lib2048::Processes
                        end
                      else
                        Lib2048::AI.get_strategists_classes.collect do |_class|
-                         if strategists_classes.include? String(strategist_class)
+                         if strategists_classes.include? String(_class)
                            strategist_class.new
                          end
                        end - [nil]
