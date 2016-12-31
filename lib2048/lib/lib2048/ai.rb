@@ -122,6 +122,7 @@ module Lib2048::AI
 
 
     def non_nil_fields
+      # returns all fields which are non nil
       @fields - [nil]
     end
 
@@ -144,13 +145,61 @@ module Lib2048::AI
     end
 
 
-    def pairs
-      # returns the values of the pairs
+    def fields_with_pairs
+      # returns the values of the fields with a valid pair
       unless non_nil_fields.length == non_nil_fields.uniq.length
-        (non_nil_fields.uniq.collect do |field|
+        non_nil_fields.uniq.collect do |field|
           field if @fields.count(field) > 1
-        end - [nil]).first
+        end - [nil]
       end
+    end
+
+
+    def paired_fields
+      # returns the fields with neighboring equivalent fields
+      unless non_nil_fields.length == non_nil_fields.uniq.length
+
+        # let's see how many fields of the same value are neighboring
+        # but let's check only for the ones we know have pairs
+        fields_with_pairs.each do |value|
+
+          # first let's check the columns of the board for vertically neighboring
+          # fields with the same value
+
+          # collect all the coordinates of the neighboring fields
+          pairs = cols.each_with_index.inject([]) do |coordinates, (col, col_nr)|
+            # compare every pair of fields to the seaken value and add the coordinates of both
+            # fields of the pair if they match (and match the value)
+            coordinates + col.each_cons(2).with_index.collect do |pair, row_nr|
+              [[row_nr, col_nr], [row_nr + 1, col_nr]] if pair == [value]*2
+            end - [nil]
+          end
+
+          # et pour les rowmands, c'est la même chose
+          pairs += rows.each_with_index.inject([]) do |coordinates, (row, row_nr)|
+            coordinates + row.each_cons(2).with_index.collect do |pair, col_nr|
+              [[row_nr, col_nr], [row_nr, col_nr + 1]] if pair == [value]*2
+            end
+          end
+
+          # now some fields can be part of two (or more!) pairs.
+          # the next step is to maximize the number of pairs.
+          # since the connected neighbors form a tree (or - even tough unlikely - cycles!),
+          # the maximal number of pairs is achieved by starting at the ends of the tree,
+          # cut chunks (pairs) out of it and recurse with the remaining part of the tree.
+          # the ends are found by generating a histogram of the coordinates of the fields
+          # in a pair
+          histogram = pairs.flatten(1).uniq.collect { |coordinate| [coordinate, 0] }.to_h
+          pairs.flatten(1).each { |coordinate| histogram[coordinate] += 1 }
+
+          # todo: continue here - sort the histogram by lowest values and start up looking
+          # for pairs containing the lowest coordinates.
+
+
+        end
+
+      end
+
     end
 
 
@@ -167,10 +216,6 @@ module Lib2048::AI
   class Strategist
 
     @@DIRECTIONS = Lib2048::Game::DIRECTIONS
-
-    def initialize
-      @board = StrategyBoard.new
-    end
 
     def choice(fields=[], samples=1)
       raise NotImplementedError, "I just pretend to be a Strategist, ask one of my subclasses"
@@ -230,22 +275,22 @@ module Lib2048::AI
 
     def choice(fields=[], samples=1)
       # generate the board with the given set of fields
-      @board = StrategyBoard.new fields
+      board = StrategyBoard.new fields
 
       # for each choice, compute the points of the move
       @@DIRECTIONS.collect do |direction|
-        [@board.dup.move!(direction), direction]
+        [board.dup.move!(direction), direction]
       # then sort it by the weight and pick the best scores (and finally remove the points)
       end.sort.reverse.slice(0...samples).collect { |weight, direction | direction }
     end
 
     def veto(fields=[], samples=1)
       # generate the board with the given set of fields
-      @board = StrategyBoard.new fields
+      board = StrategyBoard.new fields
 
       # if a move gives no points it is totally vetoed!
       @@DIRECTIONS.collect.inject([]) do |vetos, direction|
-        _score = @board.dup.move! direction
+        _score = board.dup.move! direction
         vetos << direction if _score.eql? 0
         vetos
       end.sample samples
@@ -257,12 +302,12 @@ module Lib2048::AI
     # A sweeper tries to free as many fields as possible
 
     def choice(fields=[], samples=1)
-      @board = StrategyBoard.new fields
+      board = StrategyBoard.new fields
       # which move frees the most fields?
       @@DIRECTIONS.collect do |direction|
 
         # since move changes the board, we need to duplicate it!
-        board = @board.dup
+        board = board.dup
         board.move! direction
 
         # after moving the board, compute and return its
@@ -273,7 +318,7 @@ module Lib2048::AI
     end
 
     def veto(fields=[], samples=1)
-      @board = StrategyBoard.new fields
+      board = StrategyBoard.new fields
       (@@DIRECTIONS.collect do |direction|
 
         # since move changes the board, we need to duplicate it!
@@ -300,11 +345,47 @@ module Lib2048::AI
   end
 
 
+  class Perceptrons < Strategist
+    # Uses TrainedPerceptrons as strategy
+
+    def initialize
+      # create a perceptron for each direction
+      @perceptrons = @@DIRECTIONS.collect { |direction| [direction, Perceptron.new] }
+    end
+
+    def load!(weights={})
+      # todo: raise exception if weights doesn't include all directions
+      @perceptrons.each do |direction, perceptron|
+        perceptron.weights = weights[direction]
+      end
+    end
+
+    def choice(fields=[], samples=1)
+      # compute the values for every perceptron (i.e. for each direction)
+      @perceptrons.collect do |direction, perceptron|
+        [perceptron.feed_forward(fields), direction]
+      # then sort them by highest value
+      end.sort.reverse.slice(0..samples).collect { |value, direction| direction }
+    end
+
+    def veto(fields=[], samples=1)
+      # compute the values for every perceptron (i.e. for each direction)
+      @perceptrons.collect do |direction, perceptron|
+        [perceptron.feed_forward(fields), direction]
+      # then sort them by lowest value
+      end.sort.slice(0..samples).collect { |value, direction| direction }
+    end
+
+  end
+
+
   # Neural Network components
 
   class Perceptron
 
-    def initialize(learn_speed, number_weights)
+    attr_writer :weights
+
+    def initialize(learn_speed=0.01, number_weights=16)
       @speed = learn_speed
       @weights = (0...number_weights).collect { rand * 2 - 1 }
     end
