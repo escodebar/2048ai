@@ -20,11 +20,11 @@ module Lib2048::Processes
       @context = ZMQ::Context.new 1
       # initialize the player
       @strategists = if strategists_classes.empty?
-                       Lib2048::AI::get_strategists_classes.sample(3).collect do |_class|
+                       Lib2048::Strategies.get_strategists_classes.sample(3).collect do |_class|
                          _class.new
                        end
                      else
-                       Lib2048::AI.get_strategists_classes.collect do |_class|
+                       Lib2048::Strategies.get_strategists_classes.collect do |_class|
                          if strategists_classes.include? String(_class)
                            strategist_class.new
                          end

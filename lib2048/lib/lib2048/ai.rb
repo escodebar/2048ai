@@ -1,13 +1,17 @@
 module Lib2048::AI
 
-  ## Some useful functions
+  # Helpful mathematical methods
 
-  def self.get_strategists_classes
-    # returns all the classes which inherit from strategist
-    Lib2048::AI.constants.collect do |c|
-      _class = Lib2048::AI.const_get(c)
-      _class if _class < Strategist
-    end - [nil]  # << see what I'm doing here? I am removing all the nils!
+  def self.sigmoid(z=[])
+    # returns the sigmoid for each element of the vector z
+    z.collect { |z_i| 1 / Math.exp(-z_i) }
+  end
+
+  def self.scalar_product(x=[], y=[])
+    # todo: raisen an exception if the vectors aren't the same size
+    x.zip(y).inject(0) do |sum, (x_i, y_i)|
+      sum + x_i * y_i
+    end
   end
 
   ## Some classes
@@ -63,326 +67,135 @@ module Lib2048::AI
   end
 
 
-  # The Customized Boards
-
-  class StrategyBoard < Lib2048::Game::Board
-    # Adds some strategy features to the standard board
-
-    def fields_with_cartesian_coordinates
-      # returns the fields with cartesian coordinates
-
-      def index_to_cart_coord(index)
-        # turns the index of the element into cartesian coordinates
-        #   x -------------------------------->
-        # y .---------------------------------.
-        # | | [1, 1] [2, 1] [3, 1] ... [n, 1] |
-        # | | [1, 2] [2, 2]                   |
-        # | | [1, 3]
-        # | | ...
-        # v | [1, m]
-        #
-        [index % 4, index / 4]
-      end
-
-      @fields.each.with_index.inject([]) do |collection, (elem, index)|
-        coordinates = index_to_cart_coord index
-        collection << { x: coordinates[0], y: coordinates[1], field: elem}
-      end
-    end
-
-
-    def fields_with_radial_coordinates
-      # returns the fields with radial coordinates
-
-      def index_to_radius(index)
-        # there are 3 possible radii:
-        # - innermost fields have a radius of 1
-        # - border fields have a radius of 2
-        # - edge fields have a radius of 3
-
-        # let's assume for now that the field is as innermost field
-        radius = 1
-
-        # add + 1 to the radius if the field is in one of the outer columns
-        # (index + 1) % 4 will be 0 or 1 for the outer columns, dividing this
-        # result by 2 leads to either a 0 for outer columns or 1 for inner columns
-        radius += 1 unless (((index + 1) % 4) / 2)
-
-        # add + 1 to the radius if the field is in one of the outer rows
-        # do the same as before, but with row numbers (which is the index divided by 4)
-        radius += 1 unless ((((index / 4) + 1) % 4) / 2)
-      end
-
-      @fields.each.with_index.inject([]) do |collection, (elem, index)|
-        radius = index_to_radius index
-        angle = index_to_angle index
-        collection << { r: radius, phi: angle, field: elem}
-      end
-    end
-
-
-    def non_nil_fields
-      # returns all fields which are non nil
-      @fields - [nil]
-    end
-
-
-    def gravity
-      # returns the center of gravity of the field
-      # todo
-    end
-
-
-    def emptyness
-      # returns the number of empty fields
-      @fields.count nil
-    end
-
-
-    def max
-      # returns the value of the biggest field
-      @fields.max
-    end
-
-
-    def fields_with_pairs
-      # returns the values of the fields with a valid pair
-      unless non_nil_fields.length == non_nil_fields.uniq.length
-        non_nil_fields.uniq.collect do |field|
-          field if @fields.count(field) > 1
-        end - [nil]
-      end
-    end
-
-
-    def paired_fields_in_cols
-      # returns the fields with neighboring equivalent fields in columns
-      unless non_nil_fields.length == non_nil_fields.uniq.length
-
-        # let's see how many fields of the same value are neighboring
-        # but let's check only for the ones we know have pairs
-        fields_with_pairs.collect do |value|
-
-          # first let's check the columns of the board for vertically neighboring
-          # pairs of fields. the column and rows of the pairs are stored in an array
-          # example field for pairs of value 2
-          #     nil   nil   nil     2
-          #       8     2   nil     2
-          #       8     2   nil   nil
-          #     nil   nil     4     4
-          # pairs => [[[1, 1], [2, 1]], [[0, 3], [1, 3]]]
-
-          # collect all the coordinates of the neighboring fields
-          pairs = cols.each_with_index.inject([]) do |coordinates, (col, col_nr)|
-            # compare every pair of fields to the seaken value and add the coordinates of both
-            # fields of the pair if they match (and match the value)
-            coordinates + col.each_cons(2).with_index.collect do |pair, row_nr|
-              [[row_nr, col_nr], [row_nr + 1, col_nr]] if pair == [value]*2
-            end - [nil]
-          end
-
-          # finally return the pairs found for the value
-          [value, pairs]
-        end.to_h
-      end
-    end
-
-
-    def paired_fields_in_rows
-      # returns the fields with neighboring equivalent fields in rows
-      unless non_nil_fields.length == non_nil_fields.uniq.length
-        # et pour les rowmands, c'est la même chose
-        fields_with_pairs.collect do |value|
-          pairs = rows.each_with_index.inject([]) do |coordinates, (row, row_nr)|
-            coordinates + row.each_cons(2).with_index.collect do |pair, col_nr|
-              [[row_nr, col_nr], [row_nr, col_nr + 1]] if pair == [value]*2
-            end - [nil]
-          end
-          [value, pairs]
-        end.to_h
-      end
-    end
-
-
-    def greatest_pair_distance
-      # returns the distance between the fields with the same value
-      # todo
-    end
-
-  end
-
-
-  # The Strategists
-
-  class Strategist
-
-    @@DIRECTIONS = Lib2048::Game::DIRECTIONS
-
-    def choice(fields=[], samples=1)
-      raise NotImplementedError, "I just pretend to be a Strategist, ask one of my subclasses"
-    end
-
-    def veto(fields=[], samples=1)
-      raise NotImplementedError, "I just pretend to be a Strategist, ask one of my subclasses"
-    end
-  end
-
-
-  class CompletelyRandom < Strategist
-    # A strategist with a total random strategy
-
-    def choice(fields=[], samples=1)
-      # Selects a direction randomly
-      @@DIRECTIONS.sample samples
-    end
-
-    def veto(fields=[], samples=1)
-      # selects a veto randomly
-      @@DIRECTIONS.sample samples
-    end
-  end
-
-
-  class RandomStrategist < Strategist
-    # A smart random strategist with some sense for logics
-    # If he choses a direction he won't veto it
-
-    def initialize
-      # todo: call the initializer of the super class in order to get the directions
-      @possible_vetos = []
-    end
-
-    def choice(fields=[], samples=1)
-      # Selects a direction randomly
-      _chosen = @@DIRECTIONS.sample samples
-
-      # keep the others for the possible veto
-      @possible_vetos = @@DIRECTIONS - _chosen
-
-      _chosen
-    end
-
-    def veto(fields=[], samples=1)
-      # if a decision upon the choice was made (see def choice), the veto list
-      # should be populated and a sample of it can be taken
-      @possible_vetos.length > 0 and @possible_vetos.sample(samples) or []
-      # note: the random stategist has no veto before he did not make a choice
-    end
-  end
-
-
-  class PointMaximizer < Strategist
-    # This choses the move which gives the maximum score
-
-    def choice(fields=[], samples=1)
-      # generate the board with the given set of fields
-      board = StrategyBoard.new fields
-
-      # for each choice, compute the points of the move
-      @@DIRECTIONS.collect do |direction|
-        [board.dup.move!(direction), direction]
-      # then sort it by the weight and pick the best scores (and finally remove the points)
-      end.sort.reverse.slice(0...samples).collect { |weight, direction | direction }
-    end
-
-    def veto(fields=[], samples=1)
-      # generate the board with the given set of fields
-      board = StrategyBoard.new fields
-
-      # if a move gives no points it is totally vetoed!
-      @@DIRECTIONS.collect.inject([]) do |vetos, direction|
-        _score = board.dup.move! direction
-        vetos << direction if _score.eql? 0
-        vetos
-      end.sample samples
-    end
-  end
-
-
-  class Sweeper < Strategist
-    # A sweeper tries to free as many fields as possible
-
-    def choice(fields=[], samples=1)
-      board = StrategyBoard.new fields
-      # which move frees the most fields?
-      @@DIRECTIONS.collect do |direction|
-
-        # since move changes the board, we need to duplicate it!
-        board = board.dup
-        board.move! direction
-
-        # after moving the board, compute and return its
-        # emptyness along with the direction of the move
-        [board.emptyness, direction]
-      # then sort it by the emptyness and pick the best scores (and finally remove the emptyness)
-      end.sort.reverse.slice(0...samples).collect { |emptyness, direction| direction }
-    end
-
-    def veto(fields=[], samples=1)
-      board = StrategyBoard.new fields
-      (@@DIRECTIONS.collect do |direction|
-
-        # since move changes the board, we need to duplicate it!
-        board = @board.dup
-
-        # compute the emptyness of the board before the move
-        emptyness_before = board.fields.each.inject(0) do |emptyness, field|
-          emptyness + 1 if fields.nil?
-          emptyness
-        end
-
-        # make a move in 'direction'
-        board.move! direction
-
-        # compute the emptyness of the board after the move
-        emptyness_after = board.fields.each.inject(0) do |emptyness, field|
-          emptyness + 1 if fields.nil?
-          emptyness
-        end
-
-        direction if emptyness_before < emptyness_after
-      end - [nil]).slice 0..samples
-    end
-  end
-
-
-  class Perceptrons < Strategist
-    # Uses TrainedPerceptrons as strategy
-
-    def initialize
-      # create a perceptron for each direction
-      @perceptrons = @@DIRECTIONS.collect { |direction| [direction, Perceptron.new] }
-    end
-
-    def load!(weights={})
-      # todo: raise exception if weights doesn't include all directions
-      @perceptrons.each do |direction, perceptron|
-        perceptron.weights = weights[direction]
-      end
-    end
-
-    def choice(fields=[], samples=1)
-      # compute the values for every perceptron (i.e. for each direction)
-      @perceptrons.collect do |direction, perceptron|
-        [perceptron.feed_forward(fields), direction]
-      # then sort them by highest value
-      end.sort.reverse.slice(0..samples).collect { |value, direction| direction }
-    end
-
-    def veto(fields=[], samples=1)
-      # compute the values for every perceptron (i.e. for each direction)
-      @perceptrons.collect do |direction, perceptron|
-        [perceptron.feed_forward(fields), direction]
-      # then sort them by lowest value
-      end.sort.slice(0..samples).collect { |value, direction| direction }
-    end
-
-  end
-
-
   # Neural Network components
 
-  class Perceptron
+  class Network
+
+    def initialize(opts={})
+
+      # stores the propagated activations
+      @front_propagation = []
+      @back_propagation = []
+
+      # starts the layers of the neural network
+      @layers = 1.upto(opts.fetch(:nr_layers, 8)).collect do |index|
+        # every layer of the neural network has one more neuron than
+        # activation signals to process the activation bias of each
+        # layer of the neural network
+        Layer.new(
+          opts.fetch(:learn_speed, 0.01),
+          opts.fetch(:nr_activations, 16) + 1
+        )
+      end
+
+      # once processed by the neurons in the layers, the activation
+      # signal is weighted into several output signals. this sets
+      # random initial weights
+      @weights = 1.upto(opts.fetch(:nr_outputs, 6)).collect do |index|
+        (0...opts.fetch(:nr_activations)).collect { rand * 2 - 1 }
+      end
+    end
+
+    def propagate!(activation)
+      # propagates the activation signal through the layers
+      @front_propagation = @layers.collect.inject(activation) do |_act, layer|
+        layer.propagate _act
+      end
+    end
+
+    def propagated
+      # returns nil if empty
+      @front_propagation.last
+    end
+
+    def hypothesis!(activation)
+      # returns the hypothesis of neuronal network for a given activation signal
+
+      # propagate the activation before concluding to a hypothesis
+      propagate! activation
+
+      # compute the hypothesis using the processed activation signal
+      # notice that the propagated signal is stored in @activations
+      @weights.collect do |weights|
+        # @weights is an Array of weights, i.e.: [weights, weights, ...]
+        AI.sigmoid(AI.scalar_product(weights, propagated))
+      end
+    end
+
+    def back_propagate!(activation, expected_outcome)
+      # trains the neural network, the exclamation mark comes from hypothesis!
+
+      # compute the uncertainty in respect to the expected outcome
+      delta = expected_outcome.zip(hypothesis!(activation)) do |y_i, h_i|
+        y_i - h_i
+      end
+
+      # now propagate it through all the layers (beginning at the end) and reversing the result
+      @back_propagation = @layers.reverse.each.inject(delta) do |_delta, layer|
+        # train the layer with the _delta
+        layer.back_propagate _delta
+      end.reverse
+
+    end
+
+    def partials
+      # returns the partial derivatives
+      @front_propagation.zip(@back_propagation).collect do |(a_j, delta_i)|
+        AI.scalar_product(a_j, delta_i) / m
+      end
+    end
+
+
+
+    #def cost(activation, expected_signal)
+    #  # computes the cost function of the network
+    #  #expected_signal.zip(hypothesis(activation)).collect { |y_i, h_i| y_i - h_i }
+    #end
+
+  end
+
+  class Layer
+
+    def initialize(learn_speed=0.01, number_weights=16)
+      # we need 'number_weights' neurons in each layer.
+      # we're adding one more weight to the neurons
+      # since we're going to add a bias unit x_0 = 1 to
+      # the standard input
+      @neurons = 1.upto(number_weights).collect do |index|
+        Neuron.new learn_speed, number_weights + 1
+      end
+    end
+
+    def propagate(activation)
+      # computes the output of a layer of neurons
+      @neurons.collect do |neuron|
+        # let's add the bias unit to the activation
+        neuron.activate([1] + activation)
+      end
+    end
+
+    def back_propagate(activation, delta)
+      # trains the layer of neurons
+      @neurons.zip(activation).collect do |neuron_i, activation_i|
+        neuron_i.back_propagate activation_i, delta
+      end
+    end
+
+    def cost(activation, expected)
+      # iterate through all the neurons in the layer collecting
+      # their cost function for the given activation and add the
+      # rest
+    end
+
+    def delta(activation, expected, last=False)
+      # unless it's the last one compute
+      # scalar product (weights, usual delta) .* activation .* (1 - activation)
+    end
+
+  end
+
+
+  class Neuron
 
     attr_writer :weights
 
@@ -392,24 +205,36 @@ module Lib2048::AI
     end
 
 
-    def feed_forward(inputs)
-      # computes the scalar product of the vectors (inputs and weights)
-      total = inputs.zip(@weights).inject(0) do |sum, educts|
-        sum + educts.reduce(:*)
-      end
-
-      total > 0 and 1 or -1
+    def activate(activation)
+      # activates the neuron with the activation signal
+      AI.sigmoid(AI.scalar_product(@weights, activation))
     end
 
 
-    def train(inputs, desired_output)
+    def back_propagate(activation, delta)
+      # trains the neuron with the given activation and uncertainty
+      theta_delta = AI.scalar_product(@weights, delta)
 
-      # compute the error of our perceptron for the given input
-      error = desired_output - feed_forward(inputs)
+      # compute the next delta
+      activation.collect do |a_i|
+        theta_delta * a_i * (1 - a_i)
+      end
+    end
 
-      # use the error to compute the new weights (ergo learn)
-      @weights = inputs.zip(@weights).collect do |_input, _weight|
-        _weight + @speed * error * _input
+    def cost(activation, expected)
+      activation.zip(expected).inject(0) do |sum, (a, y)|
+        # this is equivalent to to
+        # cost(t) = y_t * log(h(x_t)) + (1 - y_t) * log(1 - h(x_t))
+        sum +
+        (y * Math.log10(activate a) +
+        (1 - y) * Math.Log10(1 - activate(a))) / activation.length
+      end
+    end
+
+    def delta(activation, expected)
+      # todo: compute the deltas
+      activation.zip(expected).collect do |a_i, y_i|
+        a_i - y_i
       end
     end
 

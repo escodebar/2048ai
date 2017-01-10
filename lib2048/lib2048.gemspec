@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.description = ''
   s.authors     = ['Pablo Verges']
   s.email       = 'pablo.verges@gmail.com'
-  s.files       = ['lib/lib2048.rb'] + ['array', 'game', 'ai', 'processes'].map { |f| "lib/lib2048/#{f}.rb" }
+  s.files       = ['lib/lib2048.rb'] + ['array', 'game', 'ai', 'strategies', 'processes'].map { |f| "lib/lib2048/#{f}.rb" }
   s.homepage    = ''
   s.license     = 'Unlicense'
 end
